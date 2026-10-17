@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=Asia/Shanghai
+
+WORKDIR /app
+
+# 只装运行期需要的系统包：psycopg 的 binary wheel 自带 libpq，不用编译
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+# 先装依赖再拷代码，改代码不会让依赖层缓存失效
+RUN pip install --upgrade pip && \
+    pip install \
+      "fastapi>=0.115" "uvicorn[standard]>=0.32" "pydantic>=2.9" "pydantic-settings>=2.6" \
+      "psycopg[binary,pool]>=3.2" "alembic>=1.14" "python-multipart>=0.0.9" "pyjwt>=2.9" \
+      "langchain>=1.0,<2" "langchain-core>=1.0" "langgraph>=1.0" \
+      "langgraph-checkpoint-postgres>=2.0" "langchain-openai>=1.0" \
+      "tiktoken>=0.8" "jieba>=0.42" "structlog>=24"
+
+COPY . .
+
+RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

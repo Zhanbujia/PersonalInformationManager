@@ -1,0 +1,101 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pim-db
+    environment:
+      POSTGRES_DB: pim
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      TZ: Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pim"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # 一次性迁移任务：先建表，再让 api / worker 启动
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: ../deploy/Dockerfile.backend
+    container_name: pim-migrate
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      # 迁移用 owner 角色，建出来的表 owner 就是它，FORCE RLS 才会对它生效
+      DATABASE_URL: postgresql://pim_owner:pim_owner@db:5432/pim
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1024}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: ../deploy/Dockerfile.backend
+    container_name: pim-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://pim_app:pim_app@db:5432/pim
+      ENV: prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  worker-ingest:
+    build:
+      context: ./backend
+      dockerfile: ../deploy/Dockerfile.backend
+    command: ["python", "-m", "workers.ingest_worker"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://pim_worker:pim_worker@db:5432/pim
+      ENV: prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker-digest:
+    build:
+      context: ./backend
+      dockerfile: ../deploy/Dockerfile.backend
+    command: ["python", "-m", "workers.digest_worker"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://pim_worker:pim_worker@db:5432/pim
+      ENV: prod
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: ../deploy/Dockerfile.frontend
+    container_name: pim-web
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
