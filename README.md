@@ -51,6 +51,17 @@ cd frontend && npm install && npm run dev
 前端 <http://localhost:5173>（已配好 `/api` 代理到 8000）。
 接口文档 <http://localhost:8000/api/docs>。
 
+> **Windows 上务必用 `python run_api.py` 启动，不要用 `uvicorn app.main:app`。**
+> Windows 的默认事件循环是 `ProactorEventLoop`，而 psycopg 的异步连接明确不支持它；
+> uvicorn 0.36+ 又是在自己内部固定选循环的，设 `asyncio.set_event_loop_policy` 也没用。
+> `run_api.py` 会把 loop 工厂显式换成 `asyncio.SelectorEventLoop`，worker 入口也做了同样处理。
+> 这个坑在 Linux 上不存在，所以 CI 发现不了。
+
+> **`WORKER_DATABASE_URL` 不能省。** jobs 表对应用角色只开了 `insert` 和 `id` 列权限
+> （防止读到别人投了什么任务），所以领取任务、查询任务进度必须用 `pim_worker`。
+> 不配就会退回应用连接，表现为任务进度接口 `permission denied`，而记录写入却一切正常——
+> 症状很偏，启动时会打警告。
+
 > **注意**：本地直接连库时，如果用的是 `postgres` 超级用户，行级安全策略会被绕过。
 > 想验证隔离，请用 `pim_app` 角色（`docker compose` 的 init 脚本已建好）。
 > 不确定当前连的是什么角色，跑 `../.venv/bin/python -m scripts.verify_db`，它会直接告诉你。

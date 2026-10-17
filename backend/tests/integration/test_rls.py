@@ -162,6 +162,40 @@ async def test_insert_with_foreign_user_id_rejected():
 
 
 @pytest.mark.asyncio
+async def test_app_role_can_enqueue_and_read_back_job_id():
+    """回归测试：`insert ... returning id` 需要对 id 列有 select 权限。
+
+    0001 为了「应用读不到别人投了什么」把 pim_app 对 jobs 的 select 整个撤了，
+    结果连自己刚插入的自增 id 也拿不回来——写记录接口在入队那一步直接 500，
+    报错却是 "permission denied for table jobs"，很难联想到是 RETURNING 引起的。
+    0002 用列级授权只放开 id 一列修掉了这个问题。
+
+    这条测试同时钉住两件事：能拿到 id，但仍然读不到 payload。
+    """
+    conn = await _connect()
+    try:
+        info = await _role_info(conn)
+        if info["is_super"] or info["name"].startswith("pim_worker"):
+            pytest.skip("列级权限只对应用角色有意义")
+
+        # force_rollback：验证完不留下真实任务，免得 worker 捡到空任务
+        async with conn.transaction(force_rollback=True):
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "insert into jobs (kind, payload) values ('ingest', '{}'::jsonb) returning id"
+                )
+                job_id = (await cur.fetchone())[0]
+        assert isinstance(job_id, int) and job_id > 0, "拿不到自增 id，轮询接口就没法用"
+
+        # 能拿 id 不等于能读表：payload 里有别的用户的参数，必须仍然拒绝
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            async with conn.cursor() as cur:
+                await cur.execute("select payload from jobs limit 1")
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
 async def test_jobs_readable_only_by_worker_role():
     """jobs 没有租户列，用权限收紧：应用角色只能 insert，读不到。"""
     conn = await _connect()

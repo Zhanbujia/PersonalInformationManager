@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # 迁移专用连接（表 owner）。不填则复用 database_url，
     # 但那时建出来的表 owner 就是应用角色，需要额外的 FORCE RLS 才安全。
     migration_database_url: str | None = None
+    # 后台任务专用连接（pim_worker）。jobs 表对应用角色只开了 insert + id 列，
+    # 领取任务、读任务进度都必须用这个角色，否则报 permission denied。
+    # 不填则复用 database_url —— 功能能跑，但任务轮询接口会 500，启动时会告警。
+    worker_database_url: str | None = None
     db_pool_min: int = 1
     db_pool_max: int = 10
     db_pool_timeout: float = 10.0
@@ -143,6 +147,16 @@ class Settings(BaseSettings):
     def sync_database_url(self) -> str:
         """Alembic / 同步脚本用。psycopg3 的 URL 形式一致，去掉可能的 +async 标记。"""
         return self.database_url.replace("postgresql+psycopg://", "postgresql://")
+
+    @property
+    def effective_worker_database_url(self) -> str:
+        """后台任务连接。没单独配就退回应用连接。
+
+        注意退回后是被降级的：jobs 表对应用角色只有 insert 和 id 列的权限，
+        worker 领不到任务、任务轮询接口会 permission denied。
+        所以启动自检会对这种配置告警，而不是静默接受。
+        """
+        return self.worker_database_url or self.database_url
 
 
 @lru_cache

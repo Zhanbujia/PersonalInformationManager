@@ -102,9 +102,8 @@ async def create_item(
 
     return {
         "id": created["id"],
-        "analysisStatus": created["analysis_status"],
-        "capturedAt": created["captured_at"],
-        "duplicate": False,
+        "analysis_status": created["analysis_status"],
+        "captured_at": created["captured_at"],
     }
 
 

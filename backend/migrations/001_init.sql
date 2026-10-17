@@ -461,6 +461,11 @@ begin
         execute 'revoke all on jobs from pim_app';
         execute 'grant insert on jobs to pim_app';
         execute 'grant usage on sequence jobs_id_seq to pim_app';
+        -- 关键细节：`insert ... returning id` 除了 insert 权限，还要求对**返回列**
+        -- 有 select 权限，否则直接报 "permission denied for table jobs"。
+        -- 只放开 id 一列：应用能拿到自己刚投的任务号去轮询，仍然读不到 payload
+        -- 和 result（那里面有别人的任务参数和总结 id）。
+        execute 'grant select (id) on jobs to pim_app';
     end if;
 
     if exists (select 1 from pg_roles where rolname = 'pim_worker') then

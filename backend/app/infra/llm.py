@@ -39,8 +39,10 @@ def _chat(model: str, temperature: float, s: Settings):
         if s.llm_api_key:
             kwargs["api_key"] = s.llm_api_key
         return init_chat_model(**kwargs)
-    except Exception:  # noqa: BLE001 - 旧版本没有 init_chat_model 时兜底
-        logger.warning("init_chat_model 不可用，回退到 ChatOpenAI")
+    except Exception as exc:  # noqa: BLE001 - 旧版本没有 init_chat_model 时兜底
+        # 一定要把原因带出来。之前这里只打一句"不可用"，没配密钥时也会走到这儿，
+        # 结果真正的配置错误（provider 名字写错、api_key 缺失）全被这行日志掩盖了。
+        logger.warning("init_chat_model 不可用，回退到 ChatOpenAI：%s: %s", type(exc).__name__, exc)
         from langchain_openai import ChatOpenAI
 
         return ChatOpenAI(

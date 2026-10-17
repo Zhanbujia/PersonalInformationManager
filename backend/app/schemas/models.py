@@ -99,11 +99,14 @@ class ItemPatchIn(ApiModel):
 
 
 class ItemCreatedOut(ApiModel):
+    """创建成功。重复内容不会走到这里——它抛 409 duplicate_content，
+    并在 detail.duplicateOf 里给出已有记录的 id。
+    所以这里不再带 duplicate 标记，免得读接口的人以为"可能返回 201 且 duplicate=true"。
+    """
+
     id: UUID
     analysis_status: AnalysisStatus
     captured_at: datetime
-    duplicate: bool = False
-    duplicate_of: UUID | None = None
 
 
 class SpanOut(ApiModel):

@@ -10,7 +10,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from scripts.verify_db import EXPECTED_POLICIES, EXPECTED_TABLES, Report, _dsn
+from scripts.verify_db import (
+    EXPECTED_POLICIES,
+    EXPECTED_TABLES,
+    Report,
+    _dsn,
+    version_tuple,
+)
 
 SQL_PATH = Path(__file__).resolve().parents[2] / "migrations" / "001_init.sql"
 
@@ -100,15 +106,42 @@ def test_force_rls_only_where_sql_says_so() -> None:
     forced = set(
         re.findall(r"alter table (\w+)\s+force\s+row level security", _sql(), re.IGNORECASE)
     )
-    expected_forced = {t for t, need in EXPECTED_TABLES.items() if need}
+    expected_forced = {t for t, mode in EXPECTED_TABLES.items() if mode == "force"}
     assert forced == expected_forced
     assert "users" not in forced, "users 加 force 会让登录函数被自己的策略挡住"
+
+
+def test_jobs_is_the_only_table_without_rls() -> None:
+    """jobs 是唯一预期不开 RLS 的表：全局队列，靠 grant 收紧。
+
+    这条断言的价值：如果将来有人给 jobs 加了 enable rls 却没写策略，
+    所有 worker 会静默地取不到任务。这里提前挡住。
+    """
+    no_rls = {t for t, mode in EXPECTED_TABLES.items() if mode == "none"}
+    assert no_rls == {"jobs"}
+    assert "jobs" not in EXPECTED_POLICIES
+    # 不开 RLS 就必须靠显式 grant 收紧权限，不能只靠"没人会查"
+    assert re.search(r"revoke all on jobs from pim_app", _sql(), re.IGNORECASE)
+    assert re.search(r"grant insert on jobs to pim_app", _sql(), re.IGNORECASE)
 
 
 def test_dsn_normalizes_driver_suffix() -> None:
     assert _dsn("postgresql+psycopg://a:b@h:5432/d") == "postgresql://a:b@h:5432/d"
     assert _dsn("postgres://a:b@h:5432/d") == "postgresql://a:b@h:5432/d"
     assert _dsn("postgresql://a:b@h:5432/d") == "postgresql://a:b@h:5432/d"
+
+
+def test_version_tuple_handles_three_part_versions() -> None:
+    """回归测试：pgvector 的 extversion 是 0.8.0。
+
+    之前用 partition('.') 取主次版本，第二段拿到 '8.0'，int() 直接抛
+    ValueError，脚本在真实库上第一次跑就崩了。
+    """
+    assert version_tuple("0.8.0") == (0, 8)
+    assert version_tuple("0.5") == (0, 5)
+    assert version_tuple("1") == (1, 0)
+    assert version_tuple("0.8.0") >= (0, 5), "pgvector 0.8 必须被判定为支持 HNSW"
+    assert version_tuple("0.4.4") < (0, 5), "0.4 不支持 HNSW，必须判为不通过"
 
 
 def test_report_counts_and_exit_code() -> None:

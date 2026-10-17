@@ -26,6 +26,7 @@ from app.config import settings
 from app.infra.db import Database
 from app.infra.llm import Embeddings, Models
 from app.infra.obs import setup_logging
+from app.infra.winloop import ensure_selector_event_loop
 from app.repo import infra as infra_repo
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,10 @@ class Worker:
         self.kinds = kinds
         self.name = name or f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:6]}"
         self.db = Database(
-            settings.database_url, min_size=1, max_size=settings.worker_concurrency + 2, name="worker"
+            settings.effective_worker_database_url,
+            min_size=1,
+            max_size=settings.worker_concurrency + 2,
+            name="worker",
         )
         self.models = Models()
         self.embeddings = Embeddings()
@@ -128,6 +132,8 @@ class Worker:
 
 def main(kinds: list[str]) -> None:
     logging.basicConfig(level=logging.INFO)
+    # 必须在 asyncio.run 之前：Windows 默认的 ProactorEventLoop 跑不了 psycopg 异步连接
+    ensure_selector_event_loop()
     asyncio.run(Worker(kinds).run())
 
 

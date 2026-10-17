@@ -43,6 +43,9 @@ services:
     env_file: [.env]
     environment:
       DATABASE_URL: postgresql://pim_app:pim_app@db:5432/pim
+      # 读任务队列要用 worker 角色：jobs 对应用角色只开了 insert 和 id 列，
+      # 否则任务进度接口会 permission denied
+      WORKER_DATABASE_URL: postgresql://pim_worker:pim_worker@db:5432/pim
       ENV: prod
     depends_on:
       migrate:

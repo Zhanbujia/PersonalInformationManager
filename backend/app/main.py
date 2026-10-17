@@ -58,6 +58,16 @@ async def _startup_checks(db: Database) -> None:
             "检索与去重可能不可用。请检查 deploy/init/01_roles.sql。"
         )
 
+    # 没单独配 worker 连接时，读 jobs 会落到应用角色上。
+    # 而 jobs 对应用角色只开了 insert 和 id 列，于是任务轮询接口会 500。
+    # 这是个很容易漏的配置：服务能起来、记录能写，只有去查任务进度才炸。
+    if not settings.worker_database_url:
+        logger.warning(
+            "未配置 WORKER_DATABASE_URL，后台任务连接退回应用角色。"
+            "jobs 表对应用角色只有 insert 与 id 列权限，任务进度接口会 permission denied。"
+            "请把 WORKER_DATABASE_URL 指向 pim_worker 角色。"
+        )
+
     if settings.llm_api_key or settings.embedding_api_key:
         try:
             emb = Embeddings()
@@ -82,7 +92,7 @@ async def lifespan(app: FastAPI):
         name="app",
     )
     worker_db = Database(
-        settings.database_url,
+        settings.effective_worker_database_url,
         min_size=1,
         max_size=5,
         timeout=settings.db_pool_timeout,

@@ -44,7 +44,7 @@ test-db:
 	$(PY) -m pytest tests/integration -q
 
 dev-api:
-	$(PY) -m uvicorn app.main:app --reload --port 8000
+	$(PY) run_api.py
 
 dev-worker:
 	$(PY) -m workers.worker

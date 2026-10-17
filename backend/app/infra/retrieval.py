@@ -149,14 +149,19 @@ async def hybrid_search(
         "kw": segment(query_text) or query_text,
     }
     filt = build_filters(kind=kind, date_from=date_from, date_to=date_to, params=params)
-    params["vec_filter"] = filt
-    params["kw_filter"] = filt
 
     if query_vec is None:
         sql = KW_ONLY_SQL
     else:
         params["vec"] = to_pgvector(query_vec)
         sql = VEC_AND_KW_SQL
+
+    # 过滤片段必须**拼进 SQL 文本**，不能放进 params。
+    # 它是 SQL 片段而不是值：一旦当成参数绑定，服务器收到的是一个孤立的 $n，
+    # 报 "syntax error at or near $2"，而且过滤器为空时也一样会炸。
+    # 安全性不受影响：片段内容只来自白名单列名和 %(f_*)s 占位符，
+    # 真正的值（kind、日期）仍旧走参数绑定，用户输入进不了 SQL 文本。
+    sql = sql.replace("%(vec_filter)s", filt).replace("%(kw_filter)s", filt)
 
     cur = await conn.execute(sql, params)
     rows = await cur.fetchall()

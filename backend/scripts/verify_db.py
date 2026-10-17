@@ -26,23 +26,26 @@ from psycopg import errors as pg_errors
 
 from app.config import get_settings
 
-# 表名 -> 是否强制 RLS（force）。
+# 表名 -> 期望的 RLS 状态。三态，不能用布尔：
+#   "force"  启用且强制（owner 也受约束）
+#   "enable" 只启用（owner 绕过，靠定义者函数作为受控出口）
+#   "none"   不启用（全局表，靠 grant 收紧权限）
 # users 只 enable 不 force：登录/注册时还不知道 user_id，
 # 靠 auth_lookup / auth_register 两个定义者函数作为受控出口。
-EXPECTED_TABLES: dict[str, bool] = {
-    "users": False,
-    "items": True,
-    "item_analyses": True,
-    "chunks": True,
-    "item_links": True,
-    "todos": True,
-    "digests": True,
-    "digest_evidence": True,
-    "qa_sessions": True,
-    "qa_messages": True,
-    "runs": True,
-    "jobs": False,  # 全局队列，无租户列，靠 grant 收紧而非 RLS
-    "usage_ledger": True,
+EXPECTED_TABLES: dict[str, str] = {
+    "users": "enable",
+    "items": "force",
+    "item_analyses": "force",
+    "chunks": "force",
+    "item_links": "force",
+    "todos": "force",
+    "digests": "force",
+    "digest_evidence": "force",
+    "qa_sessions": "force",
+    "qa_messages": "force",
+    "runs": "force",
+    "jobs": "none",  # 全局队列，无租户列，靠 grant 收紧而非 RLS
+    "usage_ledger": "force",
 }
 
 # jobs 是全局队列表，应用角色只能投递，不能读别人的任务参数
@@ -111,6 +114,18 @@ def _dsn(raw: str) -> str:
     )
 
 
+def version_tuple(text: str) -> tuple[int, int]:
+    """取版本号前两段，如 '0.8.0' -> (0, 8)。
+
+    pg_extension.extversion 是 '0.8.0' 这种三段式，
+    用 partition('.') 会让第二段变成 '8.0'，转 int 直接抛异常。
+    """
+    parts = text.split(".")
+    major = int(parts[0])
+    minor = int(parts[1]) if len(parts) > 1 else 0
+    return major, minor
+
+
 def check_extensions(cur, r: Report) -> None:
     r.section("扩展")
     cur.execute(
@@ -124,9 +139,8 @@ def check_extensions(cur, r: Report) -> None:
     # pgvector 版本低于 0.5 时不支持 HNSW，索引会建不出来
     vec = found.get("vector")
     if vec:
-        major, _, minor = vec.partition(".")
         r.check(
-            (int(major), int(minor or 0)) >= (0, 5),
+            version_tuple(vec) >= (0, 5),
             "pgvector 版本支持 HNSW",
             f"当前 {vec}，需要 >= 0.5.0",
         )
@@ -255,13 +269,20 @@ def check_rls_config(cur, r: Report) -> None:
     )
     state = {name: (enabled, forced) for name, enabled, forced in cur.fetchall()}
 
-    for table, need_force in EXPECTED_TABLES.items():
+    for table, mode in EXPECTED_TABLES.items():
         if table not in state:
             continue
         enabled, forced = state[table]
+
+        if mode == "none":
+            # 全局表（jobs）不该开 RLS：开了反而会挡住 worker 的跨用户取任务，
+            # 它的隔离靠的是「应用角色只有 insert 权限」。
+            r.check(not enabled, f"{table} 未启用 RLS（全局表，靠 grant 收紧权限）")
+            continue
+
         if not r.check(enabled, f"{table} 已启用 RLS"):
             continue
-        if need_force:
+        if mode == "force":
             # 只 enable 不 force 时，表 owner 会绕过策略。
             # 必须 force，才能保证连迁移账号自己跑查询也受约束。
             r.check(forced, f"{table} 强制 RLS（owner 也受约束）")
@@ -289,11 +310,27 @@ def check_jobs_grant(cur, r: Report) -> None:
         r.skipped("jobs 权限细分", "当前角色不是应用角色（无显式 grant）")
         return
     r.check("INSERT" in privs, "应用角色可向 jobs 投递")
-    # 关键：不能 select，否则任何用户都能读到全局队列里别人的任务参数
+    # 关键：整表 select 不能给，否则任何用户都能读到全局队列里别人的任务参数
     r.check(
         "SELECT" not in privs,
-        "应用角色不能读 jobs（防止跨用户读到任务参数）",
+        "应用角色不能整表读 jobs（防止跨用户读到任务参数）",
         f"实际权限: {', '.join(sorted(privs))}",
+    )
+
+    # `insert ... returning id` 需要对返回列有 select 权限，所以 id 这一列必须单独授权。
+    # 少了它，写记录接口会在入队那一步 500，而且错误信息只提 jobs 表，很难联想到 RETURNING。
+    cur.execute(
+        """
+        select column_name from information_schema.column_privileges
+        where table_schema = 'public' and table_name = 'jobs'
+          and grantee = current_user and privilege_type = 'SELECT'
+        """
+    )
+    readable = {row[0] for row in cur.fetchall()}
+    r.check(
+        readable == {"id"},
+        "jobs 只有 id 列可读（够拿自己的任务号，读不到 payload/result）",
+        f"实际可读列: {', '.join(sorted(readable)) or '无'}",
     )
 
 
