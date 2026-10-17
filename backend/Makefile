@@ -6,12 +6,13 @@ else
 	PY := ../.venv/bin/python
 endif
 
-.PHONY: help install db-up db-down migrate test test-unit dev-api dev-worker dev-web build-web fmt
+.PHONY: help install db-up db-down migrate verify-db test test-unit dev-api dev-worker dev-web build-web fmt
 
 help:
 	@echo "make install     安装后端与前端依赖"
 	@echo "make db-up       起本地 PostgreSQL（pgvector）"
 	@echo "make migrate     建表 + RLS 策略（用 pim_owner 身份）"
+	@echo "make verify-db   核对迁移结果：表/索引/策略/RLS 是否真的生效"
 	@echo "make dev-api     起后端（热重载）"
 	@echo "make dev-worker  起后台 worker（入库 + 总结）"
 	@echo "make dev-web     起前端（Vite）"
@@ -32,6 +33,9 @@ db-down:
 
 migrate:
 	$(PY) -m alembic upgrade head
+
+verify-db:
+	$(PY) -m scripts.verify_db
 
 test:
 	$(PY) -m pytest tests/unit -q

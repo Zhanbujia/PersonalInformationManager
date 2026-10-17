@@ -53,6 +53,7 @@ cd frontend && npm install && npm run dev
 
 > **注意**：本地直接连库时，如果用的是 `postgres` 超级用户，行级安全策略会被绕过。
 > 想验证隔离，请用 `pim_app` 角色（`docker compose` 的 init 脚本已建好）。
+> 不确定当前连的是什么角色，跑 `../.venv/bin/python -m scripts.verify_db`，它会直接告诉你。
 
 ---
 
@@ -157,11 +158,19 @@ cd backend
 # 单元测试（不需要数据库、不需要模型密钥）
 ../.venv/bin/python -m pytest tests/unit -q
 
+# 数据库结构自检：表、索引、触发器、RLS 配置、向量维度逐项核对
+../.venv/bin/python -m scripts.verify_db
+
 # 数据库集成测试：验证跨用户读写被拦住
 # 必须用非超级用户角色，否则测试会自我跳过（并告诉你原因）
 TEST_DATABASE_URL=postgresql://pim_app:pim_app@localhost:5432/pim \
   ../.venv/bin/python -m pytest tests/integration -q
 ```
+
+`verify_db` 解决的是「迁移跑完不报错，但对象其实没生效」这类问题。
+它不只查配置，还会真的用一个随机身份去读、去冒充别人写一次，
+看是否被拦住，然后回滚——所以能发现「策略漏了 `with check`」这种配置看着对、
+行为却是漏的漏洞。任一项不通过就以非 0 退出，可以直接放进 CI。
 
 集成测试里最关键的一条是 `test_wrong_user_write_affects_zero_rows`：
 它断言"跨用户写入受影响行数 = 0"，而不是"抛异常"——因为真实行为就是不抛异常。
