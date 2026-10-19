@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 def _chat(model: str, temperature: float, s: Settings):
     """建一个聊天模型。base_url 为空时用官方默认。"""
+    if s.llm_provider == "mock":
+        from app.infra.mock import MockChatModel
+
+        return MockChatModel(model_name=model, temperature=temperature)
     try:
         from langchain.chat_models import init_chat_model
 
@@ -81,6 +85,12 @@ class Embeddings:
 
     def __init__(self, s: Settings | None = None) -> None:
         self.settings = s or default_settings
+        if self.settings.llm_provider == "mock":
+            from app.infra.mock import MockEmbeddings
+
+            self._client = MockEmbeddings(self.settings.embedding_dim)
+            self._dim_checked = False
+            return
         from langchain_openai import OpenAIEmbeddings
 
         kwargs: dict[str, Any] = {

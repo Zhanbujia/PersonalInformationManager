@@ -183,6 +183,14 @@ TEST_DATABASE_URL=postgresql://pim_app:pim_app@localhost:5432/pim \
 看是否被拦住，然后回滚——所以能发现「策略漏了 `with check`」这种配置看着对、
 行为却是漏的漏洞。任一项不通过就以非 0 退出，可以直接放进 CI。
 
+### 没有模型密钥也能跑通整条 AI 链路
+
+设 `LLM_PROVIDER=mock` 即可启用本地确定性占位实现（不联网、不需要密钥）：
+入库分析、向量化、问答 Agent、阶段总结都能跑，用来联调与测试。
+占位实现刻意保证程序校验能通过（quote 是原文子串、摘要无数字、向量确定且维度一致、
+问答 Agent 先发一次真实 `search_records` 工具调用再给带 `[n]` 引用的答案）。
+接入真实模型时改回 `openai` 并填 `LLM_API_KEY`（及 `EMBEDDING_API_KEY`）即可。
+
 集成测试里最关键的一条是 `test_wrong_user_write_affects_zero_rows`：
 它断言"跨用户写入受影响行数 = 0"，而不是"抛异常"——因为真实行为就是不抛异常。
 

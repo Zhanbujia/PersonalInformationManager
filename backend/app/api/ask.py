@@ -20,7 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessageChunk
+from langchain_core.messages import AIMessage, AIMessageChunk
 
 from app.agents.ask.context import AskContext
 from app.agents.ask.graph import agent_runtime_config, build_ask_agent
@@ -130,7 +130,10 @@ async def ask(
                     token, meta = chunk
                     if meta.get("langgraph_node") == "tools":
                         continue
-                    if not isinstance(token, AIMessageChunk):
+                    # 兼容两种形态：流式模型产出 AIMessageChunk，
+                    # 非流式模型（含本地 mock）在消息流里直接产出 AIMessage，
+                    # 这里都当作答案文本来取，否则最终答案只进 done、前端看不到正文。
+                    if not isinstance(token, (AIMessageChunk, AIMessage)):
                         continue
                     text = token.content
                     if isinstance(text, list):

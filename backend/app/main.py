@@ -68,7 +68,7 @@ async def _startup_checks(db: Database) -> None:
             "请把 WORKER_DATABASE_URL 指向 pim_worker 角色。"
         )
 
-    if settings.llm_api_key or settings.embedding_api_key:
+    if settings.llm_provider == "mock" or settings.llm_api_key or settings.embedding_api_key:
         try:
             emb = Embeddings()
             dim = await emb.probe_dim()
