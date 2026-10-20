@@ -206,9 +206,9 @@ async def generate_digest(
 
 def _bind_structured(llm):
     try:
-        return llm.with_structured_output(DigestDraft, method="json_schema")
+        return llm.with_structured_output(DigestDraft, method="function_calling")
     except TypeError:
-        return llm.with_structured_output(DigestDraft)
+        return llm.with_structured_output(DigestDraft, method="function_calling")
 
 
 def _clean_actions(actions: list[ActionDraft], allowed: set[str]) -> list[dict]:

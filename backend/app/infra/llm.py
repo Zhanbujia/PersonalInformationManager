@@ -91,6 +91,19 @@ class Embeddings:
             self._client = MockEmbeddings(self.settings.embedding_dim)
             self._dim_checked = False
             return
+        # 没有独立的 embedding 提供方（DeepSeek 等纯对话网关没有 embedding 接口），
+        # 不要拿 LLM 的 api_key/base_url 去打 /embeddings（会 4xx，且每条约一条异常日志）。
+        # 退化为本地确定性向量：入库/检索链路照常跑，只是向量不具语义，检索以关键词为主。
+        if not (self.settings.embedding_api_key or self.settings.embedding_base_url):
+            from app.infra.mock import MockEmbeddings
+
+            self._client = MockEmbeddings(self.settings.embedding_dim)
+            self._dim_checked = False
+            logger.warning(
+                "未配置 EMBEDDING_API_KEY/EMBEDDING_BASE_URL，向量化降级为本地确定性向量"
+                "（非语义）；检索以关键词为主。如需语义向量请单独配置 embedding 提供方。"
+            )
+            return
         from langchain_openai import OpenAIEmbeddings
 
         kwargs: dict[str, Any] = {

@@ -104,10 +104,12 @@ class Extractor:
     def __init__(self, llm) -> None:
         self._llm = llm
         try:
-            # json_schema 由供应商强制约束，比 function_calling 更硬
-            self._structured = llm.with_structured_output(ItemAnalysis, method="json_schema")
+            # function_calling 兼容性最好：OpenAI / DeepSeek / Moonshot 等
+            # OpenAI 兼容网关都支持工具调用；DeepSeek 不支持 json_schema 这种
+            # response_format，会直接 400。
+            self._structured = llm.with_structured_output(ItemAnalysis, method="function_calling")
         except TypeError:
-            self._structured = llm.with_structured_output(ItemAnalysis)
+            self._structured = llm.with_structured_output(ItemAnalysis, method="function_calling")
 
     async def analyze(self, text: str) -> tuple[ItemAnalysis, int, int]:
         """返回 (分析结果, 输入 token, 输出 token)。"""

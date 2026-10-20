@@ -27,6 +27,7 @@ from app.agents.ask.middleware.budget import budget_guard
 from app.agents.ask.middleware.cache_marker import cache_marker
 from app.agents.ask.middleware.citation import citation_check
 from app.agents.ask.middleware.persist import persist_run
+from app.agents.ask.middleware.tool_cap import tool_cap
 from app.agents.ask.middleware.tool_guard import tool_guard
 from app.agents.ask.middleware.trimmer import context_trimmer
 from app.agents.ask.prompt import ASK_SYSTEM
@@ -51,6 +52,7 @@ def build_ask_agent(strong_llm, ctx: AskContext, db, checkpointer=None):
             budget_guard,
             context_trimmer,
             cache_marker,
+            tool_cap,
             tool_guard,
             citation_check,
             persist_run,

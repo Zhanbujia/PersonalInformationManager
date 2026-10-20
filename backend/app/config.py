@@ -70,9 +70,11 @@ class Settings(BaseSettings):
     # ---------- 预算（§6.2 三个终止条件）----------
     max_rounds: int = 5
     turn_tokens: int = 70_000
-    max_tool_calls: int = 12
-    # LangGraph 计的是超级步：5 轮 ≈ 10~11 步，留 1 步余量
-    recursion_limit: int = 12
+    max_tool_calls: int = 6
+    # LangGraph 计的是超级步：一轮 = 模型节点 + 若干工具节点；
+    # 某些模型会并行打多个 tool_calls，step 数涨得比"轮数"快。
+    # 给足余量，让 budget_guard / tool_cap 先触发，而不是先撞 recursion_limit。
+    recursion_limit: int = 16
     tool_failure_threshold: int = 3
 
     # ---------- 检索 ----------
