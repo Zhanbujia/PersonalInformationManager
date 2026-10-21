@@ -4,7 +4,7 @@
 
 1. **落盘文件名用 uuid，不用原始文件名**。原始名可能带 `../`、重名、非法字符；
    只把原始名存数据库，下载时再回填到 `Content-Disposition`，两个问题一起解决。
-2. **相对路径按 personal-memory-backend/ 解析**，不按进程 cwd 解析。worker 和 API 的 cwd 可能不同，
+2. **相对路径按 backend/ 解析**，不按进程 cwd 解析。worker 和 API 的 cwd 可能不同，
    按 cwd 解析会让同一个存储目录在两处指向不同位置——这种 bug 很难查。
 3. **边写边算 sha256**，既做去重键，又不用为了算哈希把文件再整读一遍。
 """
@@ -18,7 +18,7 @@ from uuid import UUID
 
 from app.config import settings
 
-_BACKEND_ROOT = Path(__file__).resolve().parents[2]  # personal-memory-backend/
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]  # backend/
 
 
 class FileStore:

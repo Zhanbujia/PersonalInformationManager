@@ -1,9 +1,9 @@
 SHELL := /bin/bash
-PY := ../.venv/Scripts/python.exe
+PY := ../../.venv/Scripts/python.exe
 ifeq ($(OS),Windows_NT)
-	PY := ../.venv/Scripts/python.exe
+	PY := ../../.venv/Scripts/python.exe
 else
-	PY := ../.venv/bin/python
+	PY := ../../.venv/bin/python
 endif
 
 .PHONY: help install db-up db-down migrate verify-db test test-unit dev-api dev-worker dev-web build-web fmt
@@ -21,7 +21,7 @@ help:
 
 install:
 	$(PY) -m pip install -e ".[dev]"
-	cd ../personal-memory-frontend && npm install
+	cd ../frontend && npm install
 
 db-up:
 	cd .. && docker compose up -d db
@@ -50,10 +50,10 @@ dev-worker:
 	$(PY) -m workers.worker
 
 dev-web:
-	cd ../personal-memory-frontend && npm run dev
+	cd ../frontend && npm run dev
 
 build-web:
-	cd ../personal-memory-frontend && npm run build
+	cd ../frontend && npm run build
 
 fmt:
 	$(PY) -m ruff check --fix . || true

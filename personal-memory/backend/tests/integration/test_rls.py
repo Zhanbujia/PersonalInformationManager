@@ -7,7 +7,7 @@
 
 跑法：
     TEST_DATABASE_URL=postgresql://pim_app:pim_app@localhost:5432/pim \
-    ../.venv/Scripts/python.exe -m pytest tests/integration -q
+    ../../.venv/Scripts/python.exe -m pytest tests/integration -q
 """
 
 from __future__ import annotations
