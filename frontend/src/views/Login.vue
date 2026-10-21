@@ -18,7 +18,7 @@ const error = ref('')
 async function submit() {
   error.value = ''
   if (!email.value.trim() || !password.value) {
-    error.value = '邮箱和密码都要填'
+    error.value = '账号和密码都要填'
     return
   }
   try {
@@ -59,8 +59,13 @@ async function submit() {
           <input v-model="displayName" type="text" placeholder="怎么称呼你" />
         </label>
         <label>
-          <span>邮箱</span>
-          <input v-model="email" type="email" placeholder="you@example.com" autocomplete="email" />
+          <span>{{ mode === 'login' ? '邮箱 / 用户名' : '邮箱' }}</span>
+          <input
+            v-model="email"
+            :type="mode === 'login' ? 'text' : 'email'"
+            :placeholder="mode === 'login' ? 'admin 或 you@example.com' : 'you@example.com'"
+            autocomplete="username"
+          />
         </label>
         <label>
           <span>密码</span>
