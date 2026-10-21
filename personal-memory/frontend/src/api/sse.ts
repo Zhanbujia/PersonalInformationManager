@@ -24,6 +24,7 @@ export interface AskPayload {
   query: string
   sessionId?: string | null
   clientTurnId: string
+  attachmentIds?: string[]
 }
 
 export async function* streamAsk(

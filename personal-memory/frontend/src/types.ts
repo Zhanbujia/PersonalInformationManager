@@ -102,11 +102,30 @@ export interface Citation {
   verified?: boolean
 }
 
+export interface ChatAttachment {
+  id: string
+  fileName: string
+  mimeType?: string | null
+  fileSize?: number | null
+  kind: 'doc' | 'image'
+  status: 'ready' | 'failed'
+  error?: string | null
+}
+
+export interface ChatSession {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  messageCount: number
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   citations: Citation[]
+  attachments?: ChatAttachment[]
   streaming?: boolean
   stage?: string
   tokens?: { in: number; out: number }

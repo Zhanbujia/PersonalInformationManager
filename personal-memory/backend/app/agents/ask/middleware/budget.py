@@ -58,13 +58,10 @@ async def budget_guard_impl(state, runtime):
             "messages": [_closing("（这轮已达用量上限，先给出目前找到的内容。）")],
         }
 
-    if ctx.tool_calls >= ctx.max_tool_calls:
-        ctx.truncated = True
-        ctx.truncate_reason = "max_tool_calls"
-        return {
-            "jump_to": "end",
-            "messages": [_closing("（工具调用次数已达上限，先给出目前的结论。）")],
-        }
+    # 注意：这里**不**在 tool_calls 达上限时 jump_to end。
+    # tool_cap 会在下一次模型调用前把工具摘掉，让模型基于已有信息给出真正的回答；
+    # 如果这里先 jump，用户看到的会是一句"工具调用已达上限"的兜底文案，体验很差。
+    # 真正兜底的终止条件是 max_rounds / turn_tokens / 打转检测。
 
     if len(ctx.fingerprint_ring) >= 2 and ctx.fingerprint_ring[-1] == ctx.fingerprint_ring[-2]:
         ctx.truncated = True

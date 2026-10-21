@@ -85,6 +85,18 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   return handleResponse<T>(res)
 }
 
+/** 带鉴权取二进制并转成 object URL（图片预览用）。 */
+export async function fetchBlobUrl(path: string): Promise<string> {
+  const res = await fetch(`${BASE}${path}`, { headers: { ...authHeaders() } })
+  if (res.status === 401) {
+    setToken(null)
+    onUnauthorized?.()
+    throw new ApiError(401, 'unauthenticated', '登录已过期，请重新登录')
+  }
+  if (!res.ok) throw new ApiError(res.status, 'blob_failed', `加载失败（${res.status}）`)
+  return URL.createObjectURL(await res.blob())
+}
+
 /** 带鉴权下载：window.open 不会带 Authorization 头，所以 fetch 成 blob 再触发下载。 */
 export async function downloadFile(path: string, filename: string): Promise<void> {
   const res = await fetch(`${BASE}${path}`, { headers: { ...authHeaders() } })

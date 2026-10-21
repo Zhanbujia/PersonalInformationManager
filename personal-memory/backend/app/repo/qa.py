@@ -30,6 +30,23 @@ async def touch_session(conn: AsyncConnection, session_id: UUID) -> None:
     )
 
 
+async def delete_session(conn: AsyncConnection, session_id: UUID) -> bool:
+    cur = await conn.execute("delete from qa_sessions where id = %s", (str(session_id),))
+    return cur.rowcount > 0
+
+
+async def rename_session(conn: AsyncConnection, session_id: UUID, title: str) -> dict | None:
+    cur = await conn.execute(
+        """
+        update qa_sessions set title = %s, updated_at = now()
+        where id = %s
+        returning id, title
+        """,
+        (title[:80], str(session_id)),
+    )
+    return await cur.fetchone()
+
+
 async def add_message(
     conn: AsyncConnection,
     *,
@@ -42,12 +59,14 @@ async def add_message(
     tokens_out: int | None = None,
     cached_tokens: int | None = None,
     model: str | None = None,
+    attachments: list[dict] | None = None,
 ) -> UUID:
     cur = await conn.execute(
         """
         insert into qa_messages
-            (session_id, user_id, role, content, citations, tokens_in, tokens_out, cached_tokens, model)
-        values (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s)
+            (session_id, user_id, role, content, citations, tokens_in, tokens_out,
+             cached_tokens, model, attachments)
+        values (%s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s::jsonb)
         returning id
         """,
         (
@@ -60,6 +79,7 @@ async def add_message(
             tokens_out,
             cached_tokens,
             model,
+            json.dumps(attachments or [], ensure_ascii=False),
         ),
     )
     return (await cur.fetchone())["id"]
@@ -68,7 +88,7 @@ async def add_message(
 async def list_messages(conn: AsyncConnection, session_id: UUID, limit: int = 100) -> list[dict]:
     cur = await conn.execute(
         """
-        select id, role, content, citations, model, created_at
+        select id, role, content, citations, attachments, model, created_at
         from qa_messages
         where session_id = %s
         order by created_at asc

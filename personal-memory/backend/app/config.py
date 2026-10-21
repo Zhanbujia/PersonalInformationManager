@@ -77,13 +77,12 @@ class Settings(BaseSettings):
     embedding_batch: int = 16
 
     # ---------- 预算（§6.2 三个终止条件）----------
-    max_rounds: int = 5
+    # 注意：DeepSeek 一次可能并行发多个 tool_calls，每个工具都是一步。
+    # 轮次/工具上限要小，recursion_limit 要给足——否则 jump_to end 那一步也会撞上限。
+    max_rounds: int = 4
     turn_tokens: int = 70_000
-    max_tool_calls: int = 6
-    # LangGraph 计的是超级步：一轮 = 模型节点 + 若干工具节点；
-    # 某些模型会并行打多个 tool_calls，step 数涨得比"轮数"快。
-    # 给足余量，让 budget_guard / tool_cap 先触发，而不是先撞 recursion_limit。
-    recursion_limit: int = 16
+    max_tool_calls: int = 3
+    recursion_limit: int = 32
     tool_failure_threshold: int = 3
 
     # ---------- 检索 ----------
@@ -123,6 +122,12 @@ class Settings(BaseSettings):
     max_upload_mb: int = 25
     # 单个文件抽取出的文本上限，避免超大文档撑爆内存/数据库
     max_extract_chars: int = 200_000
+
+    # ---------- 问答附件 ----------
+    # 文档附件注入 prompt 的文本上限（太长会挤掉检索结果和对话历史）
+    chat_attach_max_chars: int = 20_000
+    # 单次提问最多随附几张图片（多模态，base64 会显著增大请求体）
+    chat_attach_max_images: int = 4
 
     # ---------- 总结 ----------
     digest_tokens: int = 30_000

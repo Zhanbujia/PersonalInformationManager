@@ -35,9 +35,14 @@ async def tool_cap(request, handler):
         ctx.truncated = True
         ctx.truncate_reason = ctx.truncate_reason or "tool_cap"
         try:
-            # 摘掉工具：模型只能输出最终答案，无法再发起工具调用
-            request = request.override(model=request.model.bind_tools([]))
-        except Exception:  # noqa: BLE001 - 去工具失败就退回原样，靠 recursion_limit 兜底
-            logger.warning("tool_cap: 去工具失败，退回原模型", exc_info=True)
+            # 强制"不许再调用工具"，但**保留工具 schema**（前缀稳定）。
+            # 比 bind_tools([]) 可靠：多数实现里把工具换成空列表并不会真正撤销
+            # 已绑定的工具，模型照样能继续调。
+            request = request.override(model=request.model.bind(tool_choice="none"))
+        except Exception:  # noqa: BLE001
+            try:
+                request = request.override(model=request.model.bind_tools([]))
+            except Exception:  # noqa: BLE001 - 兜底失败就退回原模型
+                logger.warning("tool_cap: 去工具失败，退回原模型", exc_info=True)
 
     return await handler(request)
