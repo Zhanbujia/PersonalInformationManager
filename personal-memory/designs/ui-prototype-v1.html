@@ -1,0 +1,1145 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>拾穗 · UI 重设计原型 v1</title>
+<style>
+  :root {
+    --bg: #f5f2ea;
+    --surface: #ffffff;
+    --surface-2: #faf8f3;
+    --ink: #1e2a24;
+    --ink-2: #43524a;
+    --muted: #6b756e;
+    --line: #e4ded0;
+    --line-2: #d8d1c0;
+    --forest: #1d3a2c;
+    --forest-ink: #f3efe4;
+    --green: #2f6b4f;
+    --green-2: #3c7f5e;
+    --green-soft: #e7f0ea;
+    --gold: #b08145;
+    --gold-ink: #8a5f2c;
+    --gold-soft: #f6eddc;
+    --danger: #a33a3a;
+    --danger-soft: #f8e9e7;
+    --warn: #a9651f;
+    --warn-soft: #fbf0e1;
+    --shadow: 0 1px 2px rgba(30, 42, 36, 0.05), 0 8px 24px rgba(30, 42, 36, 0.06);
+    --shadow-lg: 0 16px 48px rgba(30, 42, 36, 0.16);
+    --r-sm: 10px;
+    --r: 14px;
+    --r-lg: 20px;
+    --sans: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  }
+  [data-theme="dark"] {
+    --bg: #0f1713;
+    --surface: #17241d;
+    --surface-2: #1b2a22;
+    --ink: #ece8dd;
+    --ink-2: #c3cbc4;
+    --muted: #8b968f;
+    --line: #283a30;
+    --line-2: #32493c;
+    --forest: #0b120e;
+    --forest-ink: #ede9de;
+    --green: #6fb08c;
+    --green-2: #83c29d;
+    --green-soft: #1c3328;
+    --gold: #d2a36a;
+    --gold-ink: #e6bd86;
+    --gold-soft: #2e2618;
+    --danger: #e08a85;
+    --danger-soft: #3a2322;
+    --warn: #e0a96d;
+    --warn-soft: #3a2c1c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--green); text-decoration: none; }
+  .i {
+    width: 18px; height: 18px; flex-shrink: 0;
+    fill: none; stroke: currentColor; stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* ---------- 布局 ---------- */
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); height: 100vh; }
+  .sidebar {
+    background: var(--forest);
+    color: var(--forest-ink);
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 20px 14px 14px;
+    position: relative; overflow: hidden;
+  }
+  .sidebar::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(520px 280px at -10% 0%, rgba(255, 255, 255, 0.08), transparent 62%);
+  }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 2px 8px; position: relative; z-index: 1; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: linear-gradient(145deg, #e2d3ad, #b08145);
+    color: #1d3a2c; display: grid; place-items: center;
+    font-weight: 700; font-size: 17px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+  .brand-name { font-weight: 600; font-size: 15px; letter-spacing: 0.5px; }
+  .brand-sub { font-size: 10.5px; color: rgba(243, 239, 228, 0.55); margin-top: 1px; }
+
+  .nav { display: flex; flex-direction: column; gap: 15px; position: relative; z-index: 1; overflow-y: auto; }
+  .nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .nav-title {
+    font-size: 10px; letter-spacing: 1.2px; color: rgba(243, 239, 228, 0.4);
+    padding: 0 10px; margin-bottom: 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 9px; border: none; background: none;
+    color: rgba(243, 239, 228, 0.76); font-size: 13px; text-align: left; width: 100%;
+    transition: background 0.12s, color 0.12s;
+  }
+  .nav-item:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+  .nav-item.active { background: rgba(255, 255, 255, 0.11); color: #fff; box-shadow: inset 3px 0 0 var(--gold); }
+  .nav-item .i { opacity: 0.9; }
+  .nav-badge {
+    margin-left: auto; font-size: 10.5px; padding: 1px 6px; border-radius: 20px;
+    background: rgba(255, 255, 255, 0.13); color: rgba(255, 255, 255, 0.85);
+  }
+  .nav-badge.warn { background: rgba(210, 163, 106, 0.22); color: #e8cfa6; }
+  .nav-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
+  .user-card {
+    display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+    border-radius: 11px; background: rgba(255, 255, 255, 0.06);
+  }
+  .user-card .name { font-size: 12.5px; color: rgba(243, 239, 228, 0.9); }
+  .user-card .role { font-size: 10.5px; color: rgba(243, 239, 228, 0.45); }
+  .user-card .i { margin-left: auto; opacity: 0.6; cursor: pointer; }
+
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 14px;
+    padding: 0 28px; border-bottom: 1px solid var(--line);
+    background: var(--bg); position: sticky; top: 0; z-index: 20;
+  }
+  .crumb h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.2px; }
+  .crumb p { margin: 0; font-size: 11.5px; color: var(--muted); }
+  .top-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .searchbtn {
+    display: flex; align-items: center; gap: 8px; min-width: 230px;
+    padding: 7px 11px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); color: var(--muted); font-size: 12.5px;
+  }
+  .searchbtn:hover { border-color: var(--green); color: var(--green); }
+  .searchbtn .kbd {
+    margin-left: auto; font-size: 10.5px; border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 5px; color: var(--muted); background: var(--surface-2);
+  }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--surface); display: grid; place-items: center; color: var(--ink-2);
+  }
+  .icon-btn:hover { border-color: var(--green); color: var(--green); }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #2f6b4f, #b08145);
+    color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 600;
+  }
+  [data-theme="light"] .i-sun { display: none; }
+  [data-theme="dark"] .i-moon { display: none; }
+
+  .viewport { flex: 1; overflow-y: auto; padding: 26px 28px 64px; }
+  .screen { display: none; max-width: 1180px; margin: 0 auto; }
+  .screen.active { display: block; animation: fade 0.18s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- 通用 ---------- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .card-pad { padding: 18px 20px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .tiny { font-size: 11px; }
+  .spacer { flex: 1; }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .section-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    padding: 8px 14px; border-radius: 10px; font-size: 13px;
+    transition: all 0.12s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--green); color: var(--green); }
+  .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.primary:hover { background: var(--green-2); border-color: var(--green-2); color: #fff; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+  .btn.ghost:hover { background: var(--surface-2); color: var(--green); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+  .btn.full { width: 100%; }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px; border-radius: 20px; font-size: 12px;
+    background: var(--surface-2); color: var(--ink-2);
+    border: 1px solid transparent; transition: all 0.12s;
+  }
+  .chip:hover { border-color: var(--line-2); }
+  .chip.active { background: var(--green-soft); color: var(--green); border-color: transparent; }
+  .tag {
+    display: inline-block; padding: 1px 8px; border-radius: 20px;
+    background: var(--surface-2); color: var(--muted); font-size: 11px;
+  }
+  .cite {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 17px; height: 17px; padding: 0 4px; margin: 0 1px;
+    border-radius: 5px; background: var(--gold-soft); color: var(--gold-ink);
+    font-size: 10.5px; font-weight: 600; vertical-align: 1px;
+  }
+  .input, textarea, select {
+    width: 100%; border: 1px solid var(--line); background: var(--surface);
+    border-radius: 10px; padding: 9px 12px; font-size: 13.5px; outline: none;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .input:focus, textarea:focus, select:focus {
+    border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft);
+  }
+  :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+  /* ---------- 今日 ---------- */
+  .hero { background: linear-gradient(135deg, var(--surface), var(--surface-2)); position: relative; overflow: hidden; }
+  .hero::after {
+    content: ""; position: absolute; right: -50px; top: -70px; width: 240px; height: 240px;
+    border-radius: 50%; background: radial-gradient(circle, var(--green-soft), transparent 70%);
+  }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; position: relative; z-index: 1; }
+  .hero-title { margin: 3px 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.2px; }
+  .hero p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .quick { display: flex; gap: 10px; align-items: center; margin-top: 18px; position: relative; z-index: 1; }
+  .quick .input { flex: 1; background: var(--surface); }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  .stat { padding: 15px 18px; }
+  .stat .lbl { font-size: 12px; color: var(--muted); }
+  .stat .num { font-size: 26px; font-weight: 600; letter-spacing: -0.6px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat .delta { font-size: 11.5px; color: var(--green); margin-top: 2px; }
+  .stat .delta.warn { color: var(--warn); }
+
+  .dash-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; margin-top: 14px; }
+  .todo { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .todo:last-child { border-bottom: none; }
+  .check {
+    width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--line-2);
+    margin-top: 2px; flex-shrink: 0; display: grid; place-items: center; color: transparent;
+    background: transparent; transition: all 0.12s;
+  }
+  .check .i { width: 12px; height: 12px; stroke-width: 2.2; }
+  .check.done { background: var(--green); border-color: var(--green); color: #fff; }
+  .todo.done .t-title { text-decoration: line-through; color: var(--muted); }
+  .t-title { font-size: 13px; }
+  .t-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; display: flex; align-items: center; gap: 6px; }
+  .pri { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); display: inline-block; }
+  .pri.low { background: var(--line-2); }
+
+  .rec { display: flex; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .rec:last-child { border-bottom: none; }
+  .rec-ico {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    background: var(--green-soft); color: var(--green); display: grid; place-items: center;
+  }
+  .rec-title { font-size: 12.5px; font-weight: 500; }
+  .rec-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .review-teaser { margin-top: 14px; }
+  .review-teaser p { margin: 0 0 12px; font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+
+  /* ---------- 记一笔 ---------- */
+  .capture-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; align-items: start; }
+  .editor {
+    border: none; padding: 2px; min-height: 210px; background: transparent;
+    font-size: 15px; line-height: 1.8; resize: none;
+  }
+  .editor:focus { box-shadow: none; }
+  .type-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .editor-foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+  }
+  .tip p { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.8; }
+
+  /* ---------- 收件箱 ---------- */
+  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .search-inline { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; border: 1px solid var(--line); border-radius: 10px; padding: 0 11px; background: var(--surface); }
+  .search-inline .i { color: var(--muted); }
+  .search-inline input { border: none; background: transparent; padding: 9px 0; }
+  .search-inline input:focus { box-shadow: none; }
+  .list-row { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .list-row:last-child { border-bottom: none; }
+  .list-row:hover { background: var(--surface-2); }
+  .list-row.expanded { background: var(--surface-2); }
+  .row-main { flex: 1; min-width: 0; }
+  .row-title { font-size: 13.5px; font-weight: 500; }
+  .row-meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .row-body { margin-top: 10px; font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+  .row-body mark { background: var(--gold-soft); color: var(--ink); padding: 0 2px; border-radius: 3px; }
+  .row-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 32px; height: 22px; padding: 0 6px; border-radius: 6px;
+    font-size: 9.5px; font-weight: 600; color: #fff; letter-spacing: 0.3px;
+  }
+  .b-pdf { background: #b4453a; } .b-doc { background: #2f5fa8; } .b-xls { background: #2f7d4f; }
+  .b-ppt { background: #b06a25; } .b-txt { background: #5b6470; }
+
+  /* ---------- 资料库 ---------- */
+  .lib { display: grid; grid-template-columns: 176px minmax(0, 1fr) 312px; gap: 14px; align-items: start; }
+  .folder {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 10px; border-radius: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+  }
+  .folder:hover { background: var(--surface-2); }
+  .folder.active { background: var(--green-soft); color: var(--green); }
+  .folder .count { font-size: 11px; color: var(--muted); }
+  .rail-title { font-size: 10.5px; color: var(--muted); letter-spacing: 0.8px; margin: 13px 10px 4px; }
+  .lib-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 10px; }
+  .file { padding: 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); text-align: left; transition: all 0.12s; }
+  .file:hover { border-color: var(--green); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .file.sel { border-color: var(--green); box-shadow: 0 0 0 2px var(--green-soft); }
+  .file .name { display: block; font-size: 12.5px; font-weight: 500; margin-top: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file .meta { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .file .status { display: inline-block; font-size: 10.5px; margin-top: 6px; color: var(--warn); }
+  .preview .ph { display: flex; gap: 10px; align-items: flex-start; }
+  .preview .ph .name { font-size: 13px; font-weight: 500; word-break: break-all; }
+  .preview .acts { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+  .preview .body { border-top: 1px dashed var(--line); padding-top: 10px; font-size: 12.5px; line-height: 1.8; color: var(--ink-2); max-height: 300px; overflow: auto; }
+
+  /* ---------- 问答 ---------- */
+  .ask { display: grid; grid-template-columns: 188px minmax(0, 1fr); gap: 14px; height: calc(100vh - 64px - 26px - 64px); min-height: 520px; }
+  .session { padding: 8px 9px; border-radius: 8px; cursor: pointer; }
+  .session:hover { background: var(--surface-2); }
+  .session.active { background: var(--green-soft); }
+  .session .s-title { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session .s-meta { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .chat { display: flex; flex-direction: column; min-height: 0; padding: 14px 16px; }
+  .thread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+  .bubble-user { align-self: flex-end; max-width: 82%; background: var(--green); color: #fff; border-radius: 14px 14px 4px 14px; padding: 9px 14px; font-size: 13px; }
+  .bot { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 11px 14px; font-size: 13px; line-height: 1.8; }
+  .bot-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .bot p { margin: 6px 0; }
+  .bot ul { margin: 6px 0; padding-left: 20px; }
+  .bot li { margin: 3px 0; }
+  .sources { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--line); }
+  .src { display: flex; gap: 7px; align-items: center; font-size: 11.5px; color: var(--muted); }
+  .composer-lg { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+  .att-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 8px; font-size: 11.5px; background: var(--surface); margin-bottom: 8px; }
+  .att-chip button { border: none; background: none; color: var(--muted); cursor: pointer; }
+  .composer-row { display: flex; gap: 8px; align-items: flex-end; }
+  .composer-row textarea { resize: none; min-height: 42px; max-height: 120px; }
+
+  /* ---------- 待办 ---------- */
+  .todo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+
+  /* ---------- 回顾 ---------- */
+  .digest { max-width: 860px; margin: 0 auto; }
+  .digest-body h3 { font-size: 13.5px; margin: 18px 0 6px; }
+  .digest-body h3:first-child { margin-top: 0; }
+  .digest-body p { margin: 6px 0; font-size: 13px; line-height: 1.85; color: var(--ink-2); }
+  .action { display: flex; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 8px; background: var(--surface-2); }
+  .action .idx { width: 20px; height: 20px; border-radius: 6px; background: var(--gold-soft); color: var(--gold-ink); font-size: 11px; font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .action .txt { font-size: 12.5px; line-height: 1.7; }
+
+  /* ---------- 设计系统 ---------- */
+  .sys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .swatch { height: 68px; border-radius: 10px; border: 1px solid var(--line); padding: 7px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 10px; }
+  .type-row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .type-row:last-child { border-bottom: none; }
+  .type-row .label { font-size: 10.5px; color: var(--muted); width: 56px; flex-shrink: 0; }
+  .comp-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .comp-row:last-child { border-bottom: none; }
+  .space-row { display: flex; gap: 8px; align-items: flex-end; }
+  .space-box { background: var(--green-soft); border-radius: 4px; }
+
+  /* ---------- 命令面板 ---------- */
+  .palette-wrap {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    background: rgba(15, 23, 19, 0.45); backdrop-filter: blur(4px);
+    align-items: flex-start; justify-content: center; padding-top: 14vh;
+  }
+  .palette-wrap.open { display: flex; }
+  .palette { width: min(560px, 92vw); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-lg); overflow: hidden; }
+  .palette input { border: none; border-bottom: 1px solid var(--line); border-radius: 0; padding: 14px 16px; font-size: 14px; }
+  .palette input:focus { box-shadow: none; }
+  .p-item { display: flex; align-items: center; gap: 10px; padding: 10px 15px; font-size: 13px; cursor: pointer; }
+  .p-item:hover { background: var(--green-soft); }
+  .p-item .i { color: var(--muted); }
+  .p-item .k { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+  .palette-foot { padding: 8px 15px; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 18px);
+    background: var(--forest); color: var(--forest-ink); padding: 9px 16px;
+    border-radius: 10px; font-size: 12.5px; opacity: 0; pointer-events: none;
+    transition: all 0.2s; z-index: 200;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width: 1180px) {
+    .lib { grid-template-columns: 168px minmax(0, 1fr); }
+    .lib .preview { display: none; }
+  }
+  @media (max-width: 1020px) {
+    .dash-grid, .capture-grid, .todo-cols, .sys-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .ask { grid-template-columns: 160px minmax(0, 1fr); }
+  }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    .sidebar { flex-direction: row; align-items: center; gap: 8px; padding: 10px 12px; overflow-x: auto; }
+    .brand { flex-shrink: 0; }
+    .brand-sub, .nav-title, .nav-badge { display: none; }
+    .nav { flex-direction: row; gap: 2px; overflow: visible; }
+    .nav-group { flex-direction: row; }
+    .nav-item { padding: 7px 9px; white-space: nowrap; }
+    .nav-item.active { box-shadow: inset 0 -2px 0 var(--gold); }
+    .nav-foot { margin: 0 0 0 auto; flex-direction: row; }
+    .user-card { display: none; }
+    .viewport { padding: 18px 16px 48px; }
+    .ask { grid-template-columns: 1fr; height: auto; }
+    .ask .rail-sm { max-height: 160px; overflow-y: auto; }
+    .ask .thread { max-height: 56vh; }
+    .stats { grid-template-columns: 1fr; }
+    .searchbtn { min-width: 0; }
+    .searchbtn span, .searchbtn .kbd { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16v4Z"/><path d="m14 6 4 4"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M5 5h14l1 8v6H4v-6l1-8Z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5Z"/></symbol>
+  <symbol id="i-todo" viewBox="0 0 24 24"><path d="M4 6h9"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m16 16 2 2 4-4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="9" cy="10" r=".8"/><circle cx="15" cy="10" r=".8"/><circle cx="10" cy="15" r=".8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14a8 8 0 1 1-10-10 7 7 0 0 0 10 10Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m9 12 5-5a3 3 0 0 1 4 4l-7 7a5 5 0 0 1-7-7l7-7"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 2.1a7 7 0 0 0-1.7 1l-2.3-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.1h5l.4-2.1a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Z"/><path d="M14 3v4h4"/></symbol>
+</svg>
+
+<div class="app">
+  <!-- ================= 侧边栏 ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">拾</div>
+      <div>
+        <div class="brand-name">拾穗</div>
+        <div class="brand-sub">个人信息管家</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="主导航">
+      <div class="nav-group">
+        <div class="nav-title">概览</div>
+        <button class="nav-item" data-goto="today" aria-current="page">
+          <svg class="i"><use href="#i-home"/></svg><span>今日</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">收集</div>
+        <button class="nav-item" data-goto="capture">
+          <svg class="i"><use href="#i-pen"/></svg><span>记一笔</span>
+        </button>
+        <button class="nav-item" data-goto="inbox">
+          <svg class="i"><use href="#i-inbox"/></svg><span>收件箱</span><span class="nav-badge">12</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">知识</div>
+        <button class="nav-item" data-goto="library">
+          <svg class="i"><use href="#i-folder"/></svg><span>资料库</span>
+        </button>
+        <button class="nav-item" data-goto="ask">
+          <svg class="i"><use href="#i-chat"/></svg><span>问一句</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-title">行动</div>
+        <button class="nav-item" data-goto="todos">
+          <svg class="i"><use href="#i-todo"/></svg><span>待办</span><span class="nav-badge warn">5</span>
+        </button>
+        <button class="nav-item" data-goto="digest">
+          <svg class="i"><use href="#i-chart"/></svg><span>回顾</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="nav-foot">
+      <button class="nav-item" data-goto="system">
+        <svg class="i"><use href="#i-palette"/></svg><span>设计系统</span>
+      </button>
+      <div class="user-card">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px">A</div>
+        <div>
+          <div class="name">admin</div>
+          <div class="role">本地账号</div>
+        </div>
+        <svg class="i" aria-label="设置"><use href="#i-settings"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 主区 ================= -->
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb">
+        <h1 id="crumb-title">今日</h1>
+        <p id="crumb-sub">今天要推进的事，一眼看清</p>
+      </div>
+      <div class="top-actions">
+        <button class="searchbtn" id="open-palette" aria-label="打开命令面板">
+          <svg class="i"><use href="#i-search"/></svg>
+          <span>搜索或跳转</span>
+          <span class="kbd">⌘K</span>
+        </button>
+        <button class="icon-btn" id="theme-toggle" aria-label="切换明暗主题">
+          <svg class="i i-moon"><use href="#i-moon"/></svg>
+          <svg class="i i-sun"><use href="#i-sun"/></svg>
+        </button>
+        <div class="avatar">A</div>
+      </div>
+    </header>
+
+    <div class="viewport">
+      <!-- ============ 今日 ============ -->
+      <section id="s-today" class="screen active">
+        <div class="card card-pad hero">
+          <div class="hero-top">
+            <div>
+              <div class="tiny muted">10 月 21 日 · 周三</div>
+              <h2 class="hero-title">下午好，admin</h2>
+              <p>把今天想到的、看到的先收进来，整理是后台的事。</p>
+            </div>
+            <button class="btn primary" data-goto="capture">
+              <svg class="i"><use href="#i-plus"/></svg> 记一笔
+            </button>
+          </div>
+          <div class="quick">
+            <input class="input" placeholder="一句话、一个链接、一段摘录…" aria-label="快速记录" />
+            <button class="btn" data-toast="已加入收件箱（原型演示）">收下</button>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="card stat"><div class="lbl">本周记录</div><div class="num">24</div><div class="delta">较上周 +6</div></div>
+          <div class="card stat"><div class="lbl">资料库文件</div><div class="num">18</div><div class="delta muted">3 个待解析</div></div>
+          <div class="card stat"><div class="lbl">未完成待办</div><div class="num">5</div><div class="delta warn">2 项今天到期</div></div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card card-pad">
+            <div class="section-head"><h2>今天要做</h2><button class="btn ghost sm" data-goto="todos">全部 →</button></div>
+            <div class="todo">
+              <button class="check" aria-label="完成"></button>
+              <div><div class="t-title">整理产品评审会的路线图要点</div><div class="t-meta"><span class="pri"></span>今天 18:00 前</div></div>
+            </div>
+            <div class="todo">
+              <button class="check" aria-label="完成"></button>
+              <div><div class="t-title">把 Q3 路线图传给张总</div><div class="t-meta"><span class="pri"></span>今天</div></div>
+            </div>
+            <div class="todo">
+              <button class="check" aria-label="完成"></button>
+              <div><div class="t-title">补完用户访谈的标签</div><div class="t-meta"><span class="pri low"></span>本周</div></div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-head"><h2>最近记录</h2><button class="btn ghost sm" data-goto="inbox">收件箱 →</button></div>
+            <div class="rec">
+              <div class="rec-ico"><svg class="i"><use href="#i-pen"/></svg></div>
+              <div><div class="rec-title">产品评审会准备：路线图 + Q3 进展</div><div class="rec-meta">笔记 · 10 分钟前</div></div>
+            </div>
+            <div class="rec">
+              <div class="rec-ico"><svg class="i"><use href="#i-file"/></svg></div>
+              <div><div class="rec-title">产品评审纪要.pdf</div><div class="rec-meta">文件 · 解析完成 · 2.4 MB</div></div>
+            </div>
+            <div class="rec">
+              <div class="rec-ico"><svg class="i"><use href="#i-chat"/></svg></div>
+              <div><div class="rec-title">用户访谈：找不到上次记的东西</div><div class="rec-meta">想法 · 昨天</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-pad review-teaser">
+          <div class="section-head"><h2>本周回顾</h2><span class="tiny muted">周日自动生成</span></div>
+          <p>这周你记了 24 条，主要集中在「产品评审」「检索体验」两条线上。有 3 条待办被反复提到，建议下周优先收敛。</p>
+          <button class="btn" data-goto="digest">查看完整回顾</button>
+        </div>
+      </section>
+
+      <!-- ============ 记一笔 ============ -->
+      <section id="s-capture" class="screen">
+        <div class="capture-grid">
+          <div class="card card-pad">
+            <textarea class="editor" placeholder="想到什么先丢进来。一句话、一段摘录、一个链接、一件要做的事……" aria-label="记录内容"></textarea>
+            <div class="type-row chip-group">
+              <button class="chip active">笔记</button>
+              <button class="chip">想法</button>
+              <button class="chip">链接</button>
+              <button class="chip">待办</button>
+              <button class="chip" data-toast="支持 PDF / Word / Excel / PPT / 文本 / 图片（原型演示）">
+                <svg class="i" style="width:14px;height:14px"><use href="#i-clip"/></svg> 文件
+              </button>
+            </div>
+            <div class="editor-foot">
+              <span class="tiny muted">⌘/Ctrl + Enter 提交 · 支持拖拽文件</span>
+              <button class="btn primary" data-toast="已记下，正在后台整理（原型演示）">记下</button>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="card card-pad">
+              <div class="section-head"><h2>最近记的</h2><button class="btn ghost sm" data-goto="inbox">全部 →</button></div>
+              <div class="rec"><div class="rec-ico"><svg class="i"><use href="#i-pen"/></svg></div><div><div class="rec-title">产品评审会准备</div><div class="rec-meta">笔记 · 10 分钟前</div></div></div>
+              <div class="rec"><div class="rec-ico"><svg class="i"><use href="#i-file"/></svg></div><div><div class="rec-title">产品评审纪要.pdf</div><div class="rec-meta">文件 · 解析完成</div></div></div>
+              <div class="rec"><div class="rec-ico"><svg class="i"><use href="#i-chat"/></svg></div><div><div class="rec-title">竞品分析的三条结论</div><div class="rec-meta">想法 · 昨天</div></div></div>
+            </div>
+            <div class="card card-pad tip">
+              <div class="tiny muted">小提示</div>
+              <p>不用整理格式。标题、标签、重点都由后台完成；你只管记。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 收件箱 ============ -->
+      <section id="s-inbox" class="screen">
+        <div class="filters">
+          <div class="search-inline"><svg class="i"><use href="#i-search"/></svg><input placeholder="搜标题和正文…" aria-label="搜索记录" /></div>
+          <div class="chip-group" style="display:flex;gap:6px">
+            <button class="chip active">全部</button>
+            <button class="chip">笔记</button>
+            <button class="chip">想法</button>
+            <button class="chip">链接</button>
+            <button class="chip">待办</button>
+          </div>
+          <select class="input" style="width:auto"><option>最近记录</option><option>最早记录</option></select>
+        </div>
+
+        <div class="card">
+          <div class="list-row">
+            <div class="rec-ico"><svg class="i"><use href="#i-pen"/></svg></div>
+            <div class="row-main">
+              <div class="row-title">产品评审会准备：路线图 + Q3 进展</div>
+              <div class="row-meta"><span class="tag">产品</span><span class="tag">会议</span>10 分钟前 · 分析完成</div>
+            </div>
+            <svg class="i muted" style="transform:rotate(90deg)"><use href="#i-check"/></svg>
+          </div>
+
+          <div class="list-row expanded">
+            <div class="rec-ico"><svg class="i"><use href="#i-file"/></svg></div>
+            <div class="row-main">
+              <div class="row-title">产品评审纪要.pdf</div>
+              <div class="row-meta"><span class="tag">文件</span><span class="tag">PDF</span>今天 10:24 · 解析完成</div>
+              <div class="row-body">
+                <p>摘要：与张总评审 Q3 路线图，确认三个优先级——<mark>稳定性、检索质量、协作</mark>；下周三前给出排期。</p>
+                <div class="row-actions">
+                  <button class="btn sm" data-toast="打开原文（原型演示）">查看原文</button>
+                  <button class="btn sm" data-toast="已重新排队分析（原型演示）">重新分析</button>
+                  <button class="btn sm danger" data-toast="已删除（原型演示）">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="list-row">
+            <div class="rec-ico"><svg class="i"><use href="#i-chat"/></svg></div>
+            <div class="row-main">
+              <div class="row-title">用户访谈：找不到上次记的东西</div>
+              <div class="row-meta"><span class="tag">访谈</span><span class="tag">检索</span>昨天 · 分析完成</div>
+            </div>
+            <svg class="i muted" style="transform:rotate(90deg)"><use href="#i-check"/></svg>
+          </div>
+
+          <div class="list-row">
+            <div class="rec-ico"><svg class="i"><use href="#i-inbox"/></svg></div>
+            <div class="row-main">
+              <div class="row-title">竞品分析的三条结论</div>
+              <div class="row-meta"><span class="tag">想法</span><span class="tag">竞品</span>昨天 · 分析完成</div>
+            </div>
+            <svg class="i muted" style="transform:rotate(90deg)"><use href="#i-check"/></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 资料库 ============ -->
+      <section id="s-library" class="screen">
+        <div class="lib">
+          <aside class="card card-pad rail-sm">
+            <button class="btn primary full" data-toast="新建文件夹（原型演示）">
+              <svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg> 新建文件夹
+            </button>
+            <div style="margin-top:10px">
+              <div class="folder active"><span>全部文件</span><span class="count">18</span></div>
+              <div class="folder"><span>未分类</span><span class="count">4</span></div>
+              <div class="rail-title">文件夹</div>
+              <div class="folder"><span>产品资料</span><span class="count">6</span></div>
+              <div class="folder"><span>用户研究</span><span class="count">5</span></div>
+              <div class="folder"><span>会议纪要</span><span class="count">3</span></div>
+            </div>
+          </aside>
+
+          <div>
+            <div class="lib-toolbar">
+              <div class="search-inline"><svg class="i"><use href="#i-search"/></svg><input placeholder="搜索文件名或内容…" aria-label="搜索文件" /></div>
+              <select class="input" style="width:auto"><option>全部类型</option><option>PDF</option><option>Word</option><option>Excel</option><option>PPT</option></select>
+              <button class="btn" data-toast="切换列表视图（原型演示）">列表</button>
+              <button class="btn primary" data-toast="选择文件上传（原型演示）">
+                <svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg> 上传
+              </button>
+            </div>
+
+            <div class="file-grid">
+              <button class="file sel">
+                <span class="badge b-pdf">PDF</span>
+                <span class="name">产品评审纪要.pdf</span>
+                <span class="meta">2.4 MB · 今天 10:24</span>
+              </button>
+              <button class="file">
+                <span class="badge b-xls">XLS</span>
+                <span class="name">Q3 路线图.xlsx</span>
+                <span class="meta">860 KB · 今天 09:15</span>
+              </button>
+              <button class="file">
+                <span class="badge b-doc">DOC</span>
+                <span class="name">竞品分析.docx</span>
+                <span class="meta">1.1 MB · 昨天</span>
+              </button>
+              <button class="file">
+                <span class="badge b-txt">MD</span>
+                <span class="name">用户访谈提纲.md</span>
+                <span class="meta">12 KB · 昨天</span>
+              </button>
+              <button class="file">
+                <span class="badge b-ppt">PPT</span>
+                <span class="name">检索方案.pptx</span>
+                <span class="meta">5.6 MB · 10-19</span>
+                <span class="status">解析中…</span>
+              </button>
+              <button class="file">
+                <span class="badge b-txt">TXT</span>
+                <span class="name">会议录音转写.txt</span>
+                <span class="meta">48 KB · 10-19</span>
+              </button>
+            </div>
+          </div>
+
+          <aside class="card card-pad preview">
+            <div class="ph">
+              <span class="badge b-pdf">PDF</span>
+              <div style="flex:1">
+                <div class="name">产品评审纪要.pdf</div>
+                <div class="tiny muted">product-review-2026-10-21.pdf</div>
+              </div>
+              <button class="btn ghost sm" data-toast="关闭预览（原型演示）">关闭</button>
+            </div>
+            <div class="tiny muted" style="margin-top:8px">2.4 MB · 今天 10:24 · 解析完成</div>
+            <div class="acts">
+              <button class="btn sm" data-toast="开始下载（原型演示）">下载</button>
+              <button class="btn sm" data-toast="重命名（原型演示）">重命名</button>
+              <select class="input" style="width:auto;padding:5px 8px;font-size:12px"><option>会议纪要</option><option>未分类</option><option>产品资料</option></select>
+              <button class="btn sm danger" data-toast="删除（原型演示）">删除</button>
+            </div>
+            <div class="body">
+              与张总评审 Q3 路线图，确认三个优先级：稳定性、检索质量、协作。下周三前给出排期；路线图幻灯片需要补充用户访谈里的三个案例。检索质量的验收标准是「问一句」的首屏命中率。
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============ 问一句 ============ -->
+      <section id="s-ask" class="screen">
+        <div class="ask">
+          <aside class="card card-pad rail-sm">
+            <button class="btn primary full" data-toast="新对话（原型演示）">
+              <svg class="i" style="width:15px;height:15px"><use href="#i-plus"/></svg> 新对话
+            </button>
+            <div style="margin-top:8px">
+              <div class="session active"><div class="s-title">产品相关记录</div><div class="s-meta">6 条 · 刚刚</div></div>
+              <div class="session"><div class="s-title">上周的待办</div><div class="s-meta">4 条 · 昨天</div></div>
+              <div class="session"><div class="s-title">检索方案讨论</div><div class="s-meta">8 条 · 10-19</div></div>
+              <div class="session"><div class="s-title">用户访谈要点</div><div class="s-meta">2 条 · 10-18</div></div>
+            </div>
+          </aside>
+
+          <div class="card chat">
+            <div class="thread">
+              <div class="bubble-user">这周我记了哪些跟产品有关的东西？</div>
+              <div class="bot">
+                <div class="bot-head"><span class="tiny muted">拾穗</span><button class="btn ghost sm" data-toast="已复制（原型演示）">复制</button></div>
+                <p>这周你记了 3 条与产品相关的记录：</p>
+                <ul>
+                  <li>周三与张总的产品评审会，需要准备路线图幻灯片 <span class="cite">1</span></li>
+                  <li>Q3 路线图的三个优先级：稳定性、检索质量、协作 <span class="cite">2</span></li>
+                  <li>用户访谈里反复提到「找不到上次记的东西」 <span class="cite">3</span></li>
+                </ul>
+                <p>三条都指向同一条主线：检索与回顾。</p>
+                <div class="sources">
+                  <div class="src"><span class="cite">1</span> 产品评审会准备 · 10-19</div>
+                  <div class="src"><span class="cite">2</span> 产品评审纪要.pdf · 10-21</div>
+                  <div class="src"><span class="cite">3</span> 用户访谈：找不到上次记的东西 · 10-20</div>
+                </div>
+              </div>
+
+              <div class="bubble-user">把评审会那条的待办列出来</div>
+              <div class="bot">
+                <div class="bot-head"><span class="tiny muted">拾穗</span><button class="btn ghost sm" data-toast="已复制（原型演示）">复制</button></div>
+                <p>从评审纪要里抽出了 2 条待办 <span class="cite">1</span>：</p>
+                <ul>
+                  <li>下周三前给出 Q3 排期</li>
+                  <li>路线图幻灯片补充 3 个用户访谈案例</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="composer-lg">
+              <div class="att-chip"><span class="badge b-pdf">PDF</span> 评审纪要.pdf <button aria-label="移除附件">×</button></div>
+              <div class="composer-row">
+                <button class="icon-btn" data-toast="上传附件（原型演示）" aria-label="上传附件">
+                  <svg class="i"><use href="#i-clip"/></svg>
+                </button>
+                <textarea placeholder="问点什么…（Enter 发送，Shift+Enter 换行）" aria-label="提问"></textarea>
+                <button class="btn primary" data-toast="发送（原型演示）" aria-label="发送">
+                  <svg class="i"><use href="#i-send"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 待办 ============ -->
+      <section id="s-todos" class="screen">
+        <div class="stats">
+          <div class="card stat"><div class="lbl">今天到期</div><div class="num">2</div><div class="delta warn">优先处理</div></div>
+          <div class="card stat"><div class="lbl">本周待办</div><div class="num">5</div><div class="delta muted">3 项未排期</div></div>
+          <div class="card stat"><div class="lbl">已完成</div><div class="num">9</div><div class="delta">本周</div></div>
+        </div>
+
+        <div class="todo-cols" style="margin-top:14px">
+          <div class="card card-pad">
+            <div class="section-head"><h2>今天</h2><span class="tiny muted">2 项</span></div>
+            <div class="todo">
+              <button class="check" aria-label="完成"></button>
+              <div><div class="t-title">整理产品评审会的路线图要点</div><div class="t-meta"><span class="pri"></span>今天 18:00 前 · 来源：产品评审会</div></div>
+            </div>
+            <div class="todo">
+              <button class="check" aria-label="完成"></button>
+              <div><div class="t-title">把 Q3 路线图传给张总</div><div class="t-meta"><span class="pri"></span>今天 · 来源：评审纪要</div></div>
+            </div>
+            <div class="todo done">
+              <button class="check done" aria-label="取消完成"><svg class="i"><use href="#i-check"/></svg></button>
+              <div><div class="t-title">回复用户访谈的跟进邮件</div><div class="t-meta"><span class="pri low"></span>今天 · 已完成</div></div>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="card card-pad">
+              <div class="section-head"><h2>本周</h2><span class="tiny muted">2 项</span></div>
+              <div class="todo">
+                <button class="check" aria-label="完成"></button>
+                <div><div class="t-title">补完用户访谈的标签</div><div class="t-meta"><span class="pri low"></span>周五前</div></div>
+              </div>
+              <div class="todo">
+                <button class="check" aria-label="完成"></button>
+                <div><div class="t-title">确认检索质量的验收标准</div><div class="t-meta"><span class="pri low"></span>本周</div></div>
+              </div>
+            </div>
+            <div class="card card-pad">
+              <div class="section-head"><h2>以后</h2><span class="tiny muted">1 项</span></div>
+              <div class="todo">
+                <button class="check" aria-label="完成"></button>
+                <div><div class="t-title">整理竞品分析的最终结论</div><div class="t-meta"><span class="pri low"></span>下月</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 回顾 ============ -->
+      <section id="s-digest" class="screen">
+        <div class="digest">
+          <div class="filters">
+            <div class="chip-group" style="display:flex;gap:6px">
+              <button class="chip active">本周</button>
+              <button class="chip">本月</button>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn primary" data-toast="正在生成回顾…（原型演示）">生成回顾</button>
+          </div>
+
+          <div class="stats">
+            <div class="card stat"><div class="lbl">记录</div><div class="num">24</div><div class="delta">较上周 +6</div></div>
+            <div class="card stat"><div class="lbl">新增标签</div><div class="num">7</div><div class="delta muted">产品 / 检索 / 访谈</div></div>
+            <div class="card stat"><div class="lbl">完成任务</div><div class="num">9</div><div class="delta">完成率 64%</div></div>
+          </div>
+
+          <div class="card card-pad digest-body" style="margin-top:14px">
+            <h3>这个阶段你记了什么</h3>
+            <p>这周的主题很集中：产品评审、Q3 路线图、检索体验。你记了 24 条，其中 9 条是待办，3 条来自用户访谈。</p>
+            <h3>几条线索</h3>
+            <p>「找不到上次记的东西」在访谈和你的随手记里各出现了一次；它和「检索质量」这条路线图优先级是同一个问题。产品评审纪要里的排期，正好可以承接这条线索。</p>
+            <h3>建议接下来做什么</h3>
+            <div class="action"><span class="idx">1</span><div class="txt">先把「检索质量」的验收标准写出来，再排期——否则下周的评审会重复讨论。<div class="tiny muted" style="margin-top:3px">依据：产品评审纪要 · 用户访谈</div></div></div>
+            <div class="action"><span class="idx">2</span><div class="txt">把用户访谈里的三个案例补进路线图幻灯片，评审时直接用。<div class="tiny muted" style="margin-top:3px">依据：路线图待办 · 用户访谈</div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 设计系统 ============ -->
+      <section id="s-system" class="screen">
+        <div class="sys-grid">
+          <div class="card card-pad">
+            <div class="section-head"><h2>色彩</h2><span class="tiny muted">明暗双主题</span></div>
+            <div class="swatches">
+              <div class="swatch" style="background:var(--bg);color:var(--ink)">bg</div>
+              <div class="swatch" style="background:var(--surface);color:var(--ink)">surface</div>
+              <div class="swatch" style="background:var(--forest);color:var(--forest-ink)">forest</div>
+              <div class="swatch" style="background:var(--green);color:#fff">green</div>
+              <div class="swatch" style="background:var(--green-soft);color:var(--green)">green-soft</div>
+              <div class="swatch" style="background:var(--gold);color:#fff">gold</div>
+              <div class="swatch" style="background:var(--warn-soft);color:var(--warn)">warn</div>
+              <div class="swatch" style="background:var(--danger-soft);color:var(--danger)">danger</div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-head"><h2>字体</h2><span class="tiny muted">系统无衬线 · 数字对齐</span></div>
+            <div class="type-row"><span class="label">26 / 600</span><span style="font-size:26px;font-weight:600;letter-spacing:-.5px">今日</span></div>
+            <div class="type-row"><span class="label">20 / 600</span><span style="font-size:20px;font-weight:600">下午好，admin</span></div>
+            <div class="type-row"><span class="label">16 / 600</span><span style="font-size:16px;font-weight:600">产品评审纪要</span></div>
+            <div class="type-row"><span class="label">14 / 400</span><span style="font-size:14px">正文：把今天想到的先收进来。</span></div>
+            <div class="type-row"><span class="label">12 / 400</span><span style="font-size:12px" class="muted">辅助：较上周 +6</span></div>
+            <div class="type-row"><span class="label">11 / 400</span><span style="font-size:11px" class="muted">标签 / 时间 / 说明</span></div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-head"><h2>组件</h2><span class="tiny muted">状态齐全</span></div>
+            <div class="comp-row">
+              <button class="btn primary">主按钮</button>
+              <button class="btn">次按钮</button>
+              <button class="btn ghost">幽灵</button>
+              <button class="btn danger">删除</button>
+              <button class="btn" disabled style="opacity:.45">禁用</button>
+            </div>
+            <div class="comp-row">
+              <span class="chip active">已选中</span>
+              <span class="chip">未选中</span>
+              <span class="tag">标签</span>
+              <span class="cite">1</span>
+              <span class="badge b-pdf">PDF</span>
+              <span class="badge b-xls">XLS</span>
+            </div>
+            <div class="comp-row">
+              <input class="input" style="max-width:200px" placeholder="输入框" />
+              <select class="input" style="max-width:140px"><option>下拉选择</option></select>
+            </div>
+            <div class="comp-row">
+              <div class="rec-ico"><svg class="i"><use href="#i-pen"/></svg></div>
+              <div><div class="row-title">列表行</div><div class="row-meta"><span class="tag">笔记</span>10 分钟前</div></div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-head"><h2>间距与圆角</h2><span class="tiny muted">4px 基数</span></div>
+            <div class="space-row" style="margin-bottom:14px">
+              <div class="space-box" style="width:4px;height:28px"></div>
+              <div class="space-box" style="width:8px;height:28px"></div>
+              <div class="space-box" style="width:12px;height:28px"></div>
+              <div class="space-box" style="width:16px;height:28px"></div>
+              <div class="space-box" style="width:20px;height:28px"></div>
+              <div class="space-box" style="width:28px;height:28px"></div>
+            </div>
+            <div class="comp-row">
+              <div style="width:56px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)"></div>
+              <div style="width:72px;height:48px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)"></div>
+              <div style="width:88px;height:56px;border:1px solid var(--line);border-radius:20px;background:var(--surface-2)"></div>
+              <div style="width:104px;height:56px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow)"></div>
+            </div>
+            <p class="small muted" style="margin:10px 0 0">圆角 10 / 14 / 20；阴影优先用边框，浮层才用大阴影。</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- 命令面板 -->
+<div class="palette-wrap" id="palette" role="dialog" aria-label="命令面板">
+  <div class="palette">
+    <input placeholder="输入页面名或动作…" aria-label="搜索命令" />
+    <div class="p-item" data-go="today"><svg class="i"><use href="#i-home"/></svg>前往 今日<span class="k">⌘1</span></div>
+    <div class="p-item" data-go="capture"><svg class="i"><use href="#i-pen"/></svg>前往 记一笔<span class="k">⌘2</span></div>
+    <div class="p-item" data-go="inbox"><svg class="i"><use href="#i-inbox"/></svg>前往 收件箱<span class="k">⌘3</span></div>
+    <div class="p-item" data-go="library"><svg class="i"><use href="#i-folder"/></svg>前往 资料库<span class="k">⌘4</span></div>
+    <div class="p-item" data-go="ask"><svg class="i"><use href="#i-chat"/></svg>前往 问一句<span class="k">⌘5</span></div>
+    <div class="p-item" data-go="todos"><svg class="i"><use href="#i-todo"/></svg>前往 待办<span class="k">⌘6</span></div>
+    <div class="p-item" data-go="digest"><svg class="i"><use href="#i-chart"/></svg>前往 回顾<span class="k">⌘7</span></div>
+    <div class="palette-foot">Esc 关闭 · 输入筛选 · 点击跳转</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+  const META = {
+    today: ['今日', '今天要推进的事，一眼看清'],
+    capture: ['记一笔', '先收进来，整理交给后台'],
+    inbox: ['收件箱', '所有记录与分类'],
+    library: ['资料库', '文件与资料归档'],
+    ask: ['问一句', '基于你自己的记录回答'],
+    todos: ['待办', '从记录里长出来的行动'],
+    digest: ['回顾', '阶段总结与行动建议'],
+    system: ['设计系统', '颜色、字体、组件与规范'],
+  };
+
+  const screens = Array.from(document.querySelectorAll('.screen'));
+  const viewport = document.querySelector('.viewport');
+
+  function go(name) {
+    if (!META[name]) name = 'today';
+    screens.forEach((s) => s.classList.toggle('active', s.id === 's-' + name));
+    document.querySelectorAll('.nav-item[data-goto]').forEach((n) => {
+      n.classList.toggle('active', n.dataset.goto === name);
+      if (n.dataset.goto === name) n.setAttribute('aria-current', 'page');
+      else n.removeAttribute('aria-current');
+    });
+    document.getElementById('crumb-title').textContent = META[name][0];
+    document.getElementById('crumb-sub').textContent = META[name][1];
+    viewport.scrollTop = 0;
+    if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+  }
+
+  document.querySelectorAll('[data-goto]').forEach((el) => {
+    el.addEventListener('click', () => go(el.dataset.goto));
+  });
+
+  // 明暗主题
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  });
+
+  // 命令面板
+  const palette = document.getElementById('palette');
+  const pinput = palette.querySelector('input');
+  function openPalette() {
+    palette.classList.add('open');
+    pinput.value = '';
+    filterPalette('');
+    setTimeout(() => pinput.focus(), 0);
+  }
+  function closePalette() {
+    palette.classList.remove('open');
+  }
+  function filterPalette(q) {
+    palette.querySelectorAll('.p-item').forEach((it) => {
+      it.style.display = !q || it.textContent.includes(q) ? 'flex' : 'none';
+    });
+  }
+  document.getElementById('open-palette').addEventListener('click', openPalette);
+  pinput.addEventListener('input', () => filterPalette(pinput.value.trim()));
+  palette.addEventListener('click', (e) => {
+    if (e.target === palette) closePalette();
+  });
+  palette.querySelectorAll('.p-item').forEach((it) => {
+    it.addEventListener('click', () => {
+      go(it.dataset.go);
+      closePalette();
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      palette.classList.contains('open') ? closePalette() : openPalette();
+    }
+    if (e.key === 'Escape') closePalette();
+  });
+
+  // Toast
+  let toastTimer;
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  document.querySelectorAll('[data-toast]').forEach((el) => {
+    el.addEventListener('click', () => toast(el.dataset.toast));
+  });
+
+  // chips 单选
+  document.querySelectorAll('.chip-group').forEach((g) => {
+    g.querySelectorAll('.chip').forEach((c) => {
+      c.addEventListener('click', () => {
+        g.querySelectorAll('.chip').forEach((x) => x.classList.remove('active'));
+        c.classList.add('active');
+      });
+    });
+  });
+
+  // 待办勾选
+  document.querySelectorAll('.check').forEach((c) => {
+    c.addEventListener('click', () => {
+      c.classList.toggle('done');
+      const row = c.closest('.todo');
+      if (row) row.classList.toggle('done');
+      const icon = c.querySelector('use');
+      if (c.classList.contains('done') && !icon) {
+        c.innerHTML = '<svg class="i"><use href="#i-check"/></svg>';
+      } else if (!c.classList.contains('done')) {
+        c.innerHTML = '';
+      }
+    });
+  });
+
+  // 便于评审/截图：?theme=dark 直接进暗色
+  const params = new URLSearchParams(location.search);
+  if (params.get('theme') === 'dark') document.documentElement.dataset.theme = 'dark';
+
+  const initial = (location.hash || '').slice(1);
+  go(META[initial] ? initial : 'today');
+</script>
+</body>
+</html>
