@@ -43,6 +43,12 @@ export interface Item {
   analysisStatus: 'pending' | 'running' | 'done' | 'failed' | 'skipped'
   analysisVersion: number
   userPinned: boolean
+  // 文件类记录才有值
+  fileName?: string | null
+  mimeType?: string | null
+  fileSize?: number | null
+  fileExt?: string | null
+  parseError?: string | null
   analysis?: Analysis | null
   links: ItemLink[]
 }

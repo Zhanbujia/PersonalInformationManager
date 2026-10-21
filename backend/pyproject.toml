@@ -27,6 +27,12 @@ dependencies = [
     "tiktoken>=0.8",
     "jieba>=0.42",
 
+    # 文件解析：把上传的文档抽成纯文本，再进同一条入库流水线
+    "pypdf>=5",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "python-pptx>=1.0",
+
     # 观测
     "structlog>=24",
 ]

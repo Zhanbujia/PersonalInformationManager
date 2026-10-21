@@ -32,3 +32,5 @@ Thumbs.db
 *.log
 logs/
 uploads/
+# 上传文件的本地存储目录（含用户原始文件，绝不入库）
+data/

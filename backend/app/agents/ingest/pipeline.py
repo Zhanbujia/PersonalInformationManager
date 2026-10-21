@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass
@@ -24,6 +25,8 @@ from app.agents.ingest.link import link_item
 from app.agents.ingest.prompt import INGEST_VERSION
 from app.config import settings
 from app.infra.db import Database
+from app.infra.fileparse import FileParseError, UnsupportedFileType, extract_text
+from app.infra.filestore import FileStore
 from app.infra.textproc import content_hash, normalize, segment, truncate_for_analysis
 from app.repo import infra as infra_repo
 from app.repo import records
@@ -52,6 +55,71 @@ async def run_ingest(ctx: IngestContext, *, user_id: UUID, item_id: UUID) -> dic
     """
     started = time.perf_counter()
     stats: dict = {"item_id": str(item_id), "steps": {}}
+
+    # ---------- 步骤 0：文件抽取（仅文件类，且正文还没抽出来）----------
+    # 放在规范化之前：解析是阻塞的 CPU/IO 活，用 to_thread 别卡住事件循环；
+    # 解析失败写 parse_error 并终止，别拿空文本去调模型（那只会产出空分析）。
+    async with ctx.db.tx(user_id) as conn:
+        head = await records.get_item_for_worker(conn, item_id)
+    if head is None:
+        logger.warning("记录不存在或已删除 item=%s", item_id)
+        return {"skipped": "not_found"}
+
+    if head.get("storage_key") and not (head.get("body_md") or "").strip():
+        ext = head.get("file_ext") or ""
+        try:
+            path = FileStore().abs_path(head["storage_key"])
+            text = await asyncio.to_thread(
+                extract_text, path, ext, max_chars=settings.max_extract_chars
+            )
+        except UnsupportedFileType as exc:
+            async with ctx.db.tx(user_id) as conn:
+                await records.set_parse_error(conn, item_id, status="failed", error=str(exc))
+            logger.warning("不支持的文件类型 item=%s err=%s", item_id, exc)
+            stats["steps"]["extract"] = f"failed:{type(exc).__name__}"
+            stats["error"] = str(exc)[:300]
+            stats["latency_ms"] = int((time.perf_counter() - started) * 1000)
+            return stats
+        except (FileParseError, OSError) as exc:
+            async with ctx.db.tx(user_id) as conn:
+                await records.set_parse_error(conn, item_id, status="failed", error=str(exc))
+            logger.warning("文件解析失败 item=%s err=%s", item_id, exc)
+            stats["steps"]["extract"] = f"failed:{type(exc).__name__}"
+            stats["error"] = str(exc)[:300]
+            stats["latency_ms"] = int((time.perf_counter() - started) * 1000)
+            return stats
+        except Exception as exc:  # noqa: BLE001 - 解析器内部的意外也要落成可读错误
+            async with ctx.db.tx(user_id) as conn:
+                await records.set_parse_error(
+                    conn, item_id, status="failed", error=f"解析异常：{exc}"
+                )
+            logger.exception("文件解析异常 item=%s", item_id)
+            stats["steps"]["extract"] = f"failed:{type(exc).__name__}"
+            stats["error"] = str(exc)[:300]
+            stats["latency_ms"] = int((time.perf_counter() - started) * 1000)
+            return stats
+
+        extracted = normalize(text)
+        if not extracted:
+            async with ctx.db.tx(user_id) as conn:
+                await records.set_parse_error(
+                    conn, item_id, status="skipped", error="未提取到文字（可能是扫描件或空文件）"
+                )
+            stats["steps"]["extract"] = "skipped:empty"
+            stats["latency_ms"] = int((time.perf_counter() - started) * 1000)
+            return stats
+
+        async with ctx.db.tx(user_id) as conn:
+            await records.set_extracted_text(
+                conn,
+                item_id,
+                body_md=extracted,
+                raw_input=text,
+                search_text=segment(extracted),
+            )
+        stats["steps"]["extract"] = f"ok:{len(extracted)}"
+    else:
+        stats["steps"]["extract"] = "skip"
 
     # ---------- 步骤 1：规范化 ----------
     async with ctx.db.tx(user_id) as conn:
@@ -118,11 +186,14 @@ async def run_ingest(ctx: IngestContext, *, user_id: UUID, item_id: UUID) -> dic
                     prompt_version=INGEST_VERSION,
                     raw_json=analysis.model_dump(),
                 )
-                # 模型判定的 kind / title / tags 回写到主表（用户改过的不动）
+                # 模型判定的 kind / title / tags 回写到主表（用户改过的不动）。
+                # 文件记录的 kind 固定为 'file'，不让模型改成 note/idea：
+                # 它是"这条记录带一个可下载的原始文件"的身份标记，不该被内容分类覆盖。
                 await conn.execute(
                     """
                     update items
-                       set kind = case when user_pinned then kind else %s end,
+                       set kind = case when user_pinned or storage_key is not null
+                                       then kind else %s end,
                            title = case when user_pinned then title else %s end,
                            tags = case when user_pinned then tags else %s end
                      where id = %s

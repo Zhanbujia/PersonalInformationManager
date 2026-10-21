@@ -59,6 +59,25 @@ export const useItemsStore = defineStore('items', {
       }
     },
 
+    /** 上传文件记为一条记录。重复文件返回 null，并把已有 id 放进 lastDuplicate。 */
+    async upload(file: File) {
+      this.lastDuplicate = null
+      const form = new FormData()
+      form.append('file', file)
+      try {
+        const created = await http.upload<{ id: string }>('/items/upload', form)
+        await this.fetch(true)
+        return created
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'duplicate_content') {
+          const detail = err.detail as { duplicateOf?: string } | undefined
+          this.lastDuplicate = detail?.duplicateOf ?? null
+          return null
+        }
+        throw err
+      }
+    },
+
     async get(id: string): Promise<Item> {
       return http.get<Item>(`/items/${id}`)
     },

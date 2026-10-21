@@ -117,6 +117,13 @@ class Settings(BaseSettings):
     analyze_head_chars: int = 4_000
     analyze_tail_chars: int = 2_000
 
+    # ---------- 文件上传 ----------
+    # 相对路径按 backend/ 解析（见 infra/filestore.py），也可写绝对路径
+    file_storage_dir: str = "data/files"
+    max_upload_mb: int = 25
+    # 单个文件抽取出的文本上限，避免超大文档撑爆内存/数据库
+    max_extract_chars: int = 200_000
+
     # ---------- 总结 ----------
     digest_tokens: int = 30_000
 

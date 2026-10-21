@@ -42,16 +42,7 @@ export function setUnauthorizedHandler(fn: () => void): void {
   onUnauthorized = fn
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...authHeaders(),
-      ...(init.headers ?? {}),
-    },
-  })
-
+async function handleResponse<T>(res: Response): Promise<T> {
   if (res.status === 401) {
     setToken(null)
     onUnauthorized?.()
@@ -72,6 +63,28 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: {
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...authHeaders(),
+      ...(init.headers ?? {}),
+    },
+  })
+  return handleResponse<T>(res)
+}
+
+/** multipart 上传。不要手动设 Content-Type：浏览器要自己带 boundary。 */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    body: form,
+    headers: { ...authHeaders() },
+  })
+  return handleResponse<T>(res)
+}
+
 function safeJson(text: string): any {
   try {
     return JSON.parse(text)
@@ -87,4 +100,5 @@ export const http = {
   patch: <T>(path: string, body?: unknown) =>
     api<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   del: <T>(path: string) => api<T>(path, { method: 'DELETE' }),
+  upload: <T>(path: string, form: FormData) => apiUpload<T>(path, form),
 }

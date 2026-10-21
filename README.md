@@ -134,6 +134,22 @@ Agent 的价值只出现在"需要多步检索、需要判断够不够"的地方
 用户手改过的记录置 `user_pinned=true`，模型此后再也不覆盖它。
 推测不会因为"写进了数据库"就变成事实。
 
+### 3.5 文件上传：只抽文本，不另起一条链路
+
+上传的文件先落本地磁盘（`FILE_STORAGE_DIR`，默认 `backend/data/files`），与一条 `items` 记录绑定；
+**正文由 worker 异步抽取**，文本写进 `body_md`，然后走和纯文本完全相同的
+分析 → 切片 → 向量 → 关联流水线。于是"记一句话"和"传一份 PDF"在数据库里是同一种东西，
+检索、问答、总结都不需要为文件单独写分支。
+
+几个刻意的约束：
+
+- **落盘文件名用 uuid**，原始文件名只存库，避免路径穿越与重名覆盖；
+- **去重按文件字节的 sha256**，同一个文件传两次判重；
+- **解析失败写 `parse_error` 并标记 failed**，不拿空文本去调模型；
+- **文件记录的 `kind` 固定为 `file`**，不让模型按内容改成 note/idea。
+
+支持：PDF / DOCX / XLSX / PPTX / Markdown / TXT / CSV / TSV / JSON / HTML / XML / YAML / LOG（≤25 MB）。
+
 ---
 
 ## 4. 安全：三个角色与行级安全
@@ -210,6 +226,7 @@ TEST_DATABASE_URL=postgresql://pim_app:pim_app@localhost:5432/pim \
 | `LLM_BASE_URL` / `LLM_API_KEY` | 任何 OpenAI 兼容网关都行（DeepSeek / 通义 / Moonshot / vLLM） |
 | `EMBEDDING_DIM` | 必须与数据库 `vector(N)` 一致，默认 1024。**改这个等于重建全部向量** |
 | `JWT_SECRET` | 生产必须换：`python -c "import secrets;print(secrets.token_urlsafe(48))"` |
+| `FILE_STORAGE_DIR` / `MAX_UPLOAD_MB` | 上传文件落盘目录与单文件大小上限（默认 `data/files`、25 MB） |
 
 `PROMPT_CACHE_ENABLED` 默认关。只有供应商要求显式标记（Anthropic 系）时才开；
 OpenAI 兼容网关多按前缀自动命中，硬塞 `cache_control` 可能被拒。
@@ -229,12 +246,14 @@ OpenAI 兼容网关多按前缀自动命中，硬塞 `cache_control` 可能被�
    要横向扩很多 worker 时应换成专门的队列。
 4. **没有多语言 UI**，也没有移动端专门适配（窄屏会折行，能用但不算精致）。
 5. **数据库集成测试需要真实 PG + pgvector**，本地没有环境时会自动跳过，不算通过。
+6. **文件解析有边界**：扫描版 PDF（纯图片）抽不出文字，会明确标 `parse_error`，需要 OCR；
+   老格式 `.doc` / `.xls` / `.ppt` 不支持，请另存为 `.docx` / `.xlsx` / `.pptx`；图片暂不做 OCR。
 
 ---
 
 ## 8. 下一步可以做的
 
-- 图片/语音入口（`items.kind` 已留 `file`，缺上传与 OCR/ASR 管线）
+- 图片/语音入口：文档上传与解析已支持，还缺图片 OCR 与语音转写（ASR）
 - 关联的"疑难裁决"定期批处理（当前只做向量阈值，不调模型）
 - 定期总结的自动触发（现在要手动点生成）
 - 导出（Markdown / JSON）

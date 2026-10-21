@@ -147,6 +147,12 @@ class ItemOut(ApiModel):
     analysis_status: str
     analysis_version: int
     user_pinned: bool
+    # 文件类记录才有值；文本记录为 None
+    file_name: str | None = None
+    mime_type: str | None = None
+    file_size: int | None = None
+    file_ext: str | None = None
+    parse_error: str | None = None
     analysis: AnalysisOut | None = None
     links: list[ItemLinkOut] = Field(default_factory=list)
 

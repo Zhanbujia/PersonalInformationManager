@@ -29,18 +29,27 @@ async def create_item(
     source_channel: str,
     source_url: str | None,
     title: str | None,
+    file_name: str | None = None,
+    mime_type: str | None = None,
+    file_size: int | None = None,
+    file_ext: str | None = None,
+    storage_key: str | None = None,
 ) -> tuple[dict | None, dict | None]:
     """插入记录。返回 (新记录, 重复的已有记录)——两者必有其一。
 
     去重靠 `unique(user_id, content_hash)`。`on conflict do nothing` 时拿不到
     returning，所以再查一次已有行，把"重复"这件事如实告诉用户，
     而不是静默丢弃或报 500。
+
+    文件类记录的 `content_hash` 是**文件字节的 sha256**（不是正文哈希）：
+    上传时正文还没抽出来，而且这样天然做到"同一个文件传两次算重复"。
     """
     cur = await conn.execute(
         """
         insert into items (user_id, kind, raw_input, body_md, content_hash,
-                           search_text, source_channel, source_url, title)
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                           search_text, source_channel, source_url, title,
+                           file_name, mime_type, file_size, file_ext, storage_key)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         on conflict (user_id, content_hash) do nothing
         returning id, analysis_status, captured_at
         """,
@@ -54,6 +63,11 @@ async def create_item(
             source_channel,
             source_url,
             title,
+            file_name,
+            mime_type,
+            file_size,
+            file_ext,
+            storage_key,
         ),
     )
     row = await cur.fetchone()
@@ -74,7 +88,8 @@ async def get_item(conn: AsyncConnection, item_id: UUID, *, with_analysis: bool 
     cur = await conn.execute(
         """
         select id, kind, title, body_md, raw_input, source_channel, source_url, tags,
-               captured_at, updated_at, analysis_status, analysis_version, user_pinned
+               captured_at, updated_at, analysis_status, analysis_version, user_pinned,
+               file_name, mime_type, file_size, file_ext, parse_error
         from items
         where id = %s and deleted_at is null
         """,
@@ -90,7 +105,8 @@ async def get_item(conn: AsyncConnection, item_id: UUID, *, with_analysis: bool 
 
 _ITEM_LIST_COLUMNS = """
     id, kind, title, body_md, raw_input, source_channel, source_url, tags,
-    captured_at, updated_at, analysis_status, analysis_version, user_pinned
+    captured_at, updated_at, analysis_status, analysis_version, user_pinned,
+    file_name, mime_type, file_size, file_ext, parse_error
 """
 
 
@@ -214,9 +230,58 @@ async def set_analysis_status(
 
 
 async def get_item_for_worker(conn: AsyncConnection, item_id: UUID) -> dict | None:
-    """worker 取原文用：只要还没被删，什么状态都拿。"""
+    """worker 取原文用：只要还没被删，什么状态都拿。
+
+    文件类记录还要带 `storage_key` / `file_ext`，流水线据此判断"正文为空时先抽文件"。
+    """
     cur = await conn.execute(
-        "select id, body_md, raw_input, kind, source_url, analysis_version, user_pinned "
+        "select id, body_md, raw_input, kind, source_url, analysis_version, user_pinned, "
+        "storage_key, file_ext, file_name, mime_type, parse_error "
+        "from items where id = %s and deleted_at is null",
+        (str(item_id),),
+    )
+    return await cur.fetchone()
+
+
+async def set_extracted_text(
+    conn: AsyncConnection,
+    item_id: UUID,
+    *,
+    body_md: str,
+    raw_input: str,
+    search_text: str,
+) -> int:
+    """把从文件抽出的正文写回主表。**不动 content_hash**：文件记录的哈希是文件字节哈希，
+    改了会破坏"同一文件重复上传"的去重语义。"""
+    cur = await conn.execute(
+        """
+        update items
+           set body_md = %s, raw_input = %s, search_text = %s,
+               parse_error = null, updated_at = now()
+         where id = %s and deleted_at is null
+        """,
+        (body_md, raw_input, search_text, str(item_id)),
+    )
+    return cur.rowcount
+
+
+async def set_parse_error(
+    conn: AsyncConnection, item_id: UUID, *, status: str, error: str | None
+) -> int:
+    cur = await conn.execute(
+        """
+        update items
+           set analysis_status = %s, parse_error = %s, updated_at = now()
+         where id = %s and deleted_at is null
+        """,
+        (status, (error or "")[:500] or None, str(item_id)),
+    )
+    return cur.rowcount
+
+
+async def get_file_meta(conn: AsyncConnection, item_id: UUID) -> dict | None:
+    cur = await conn.execute(
+        "select id, storage_key, file_name, mime_type, file_size "
         "from items where id = %s and deleted_at is null",
         (str(item_id),),
     )

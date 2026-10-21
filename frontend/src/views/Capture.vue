@@ -45,6 +45,36 @@ async function submit() {
   }
 }
 
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+const accept =
+  '.pdf,.docx,.xlsx,.pptx,.txt,.md,.markdown,.csv,.tsv,.json,.log,.yaml,.yml,.html,.htm,.xml'
+
+function pickFile() {
+  if (!uploading.value) fileInput.value?.click()
+}
+
+async function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // 清空，允许再次选择同一个文件
+  if (!file) return
+  uploading.value = true
+  try {
+    const created = await store.upload(file)
+    if (created === null) {
+      ElMessage.warning('这个文件之前上传过了，已带你去原记录')
+      if (store.lastDuplicate) router.push(`/inbox?focus=${store.lastDuplicate}`)
+      return
+    }
+    ElMessage.success('文件已上传，正在后台解析和整理')
+  } catch (err) {
+    ElMessage.error((err as Error).message)
+  } finally {
+    uploading.value = false
+  }
+}
+
 function onKeydown(e: KeyboardEvent) {
   // Ctrl/Cmd + Enter 提交：记东西的人大多在键盘上
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -86,6 +116,10 @@ function statusLabel(s: string) {
           >
             {{ k.label }}
           </button>
+          <button class="kind upload" type="button" :disabled="uploading" @click="pickFile">
+            {{ uploading ? '上传中…' : '＋ 文件' }}
+          </button>
+          <input ref="fileInput" type="file" :accept="accept" hidden @change="onFileChange" />
         </div>
         <div class="right">
           <span class="hint small muted">⌘/Ctrl + Enter 提交</span>
@@ -94,6 +128,11 @@ function statusLabel(s: string) {
           </button>
         </div>
       </div>
+
+      <p class="hint small muted upload-hint">
+        也可上传 PDF / Word / Excel / PPT / Markdown / TXT / CSV / HTML 等文件（≤25 MB），
+        后台会自动解析成文字再整理。
+      </p>
     </div>
 
     <section v-if="recent.length" class="recent">
@@ -166,6 +205,22 @@ function statusLabel(s: string) {
 .kind.on {
   background: var(--accent-soft);
   color: var(--accent);
+}
+.kind.upload {
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+.kind.upload:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.kind.upload:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.upload-hint {
+  margin: 8px 4px 0;
+  line-height: 1.6;
 }
 .right {
   display: flex;
