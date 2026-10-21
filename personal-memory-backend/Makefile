@@ -21,7 +21,7 @@ help:
 
 install:
 	$(PY) -m pip install -e ".[dev]"
-	cd ../frontend && npm install
+	cd ../personal-memory-frontend && npm install
 
 db-up:
 	cd .. && docker compose up -d db
@@ -50,10 +50,10 @@ dev-worker:
 	$(PY) -m workers.worker
 
 dev-web:
-	cd ../frontend && npm run dev
+	cd ../personal-memory-frontend && npm run dev
 
 build-web:
-	cd ../frontend && npm run build
+	cd ../personal-memory-frontend && npm run build
 
 fmt:
 	$(PY) -m ruff check --fix . || true

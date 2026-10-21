@@ -35,17 +35,17 @@ docker compose up -d --build
 docker compose up -d db
 
 # 后端
-cd backend
+cd personal-memory-backend
 python -m venv ../.venv && ../.venv/bin/pip install -e ".[dev]"   # Windows: ../.venv/Scripts/pip
 cp ../.env.example ../.env
 ../.venv/bin/alembic upgrade head
 ../.venv/bin/uvicorn app.main:app --reload --port 8000
 
 # 另开一个终端：worker（不入库分析、不生成总结的话可以不起）
-cd backend && ../.venv/bin/python -m workers.worker
+cd personal-memory-backend && ../.venv/bin/python -m workers.worker
 
 # 再开一个终端：前端
-cd frontend && npm install && npm run dev
+cd personal-memory-frontend && npm install && npm run dev
 ```
 
 前端 <http://localhost:5173>（已配好 `/api` 代理到 8000）。
@@ -72,7 +72,7 @@ cd frontend && npm install && npm run dev
 
 ```
 .
-├── backend/
+├── personal-memory-backend/
 │   ├── app/
 │   │   ├── api/            # 路由：auth / items / search / ask / todos / digests / stats
 │   │   ├── agents/
@@ -86,7 +86,7 @@ cd frontend && npm install && npm run dev
 │   ├── alembic/                  # 迁移版本管理，加载上面那份 SQL
 │   ├── workers/                  # 数据库轮询 worker
 │   └── tests/{unit,integration}
-├── frontend/src/
+├── personal-memory-frontend/src/
 │   ├── api/{client,sse}.ts       # fetch 封装 + SSE 流式解析
 │   ├── stores/                   # Pinia：auth / items / ask / todos
 │   ├── views/                    # 记一笔 / 收件箱 / 问一句 / 待办 / 回顾
@@ -136,7 +136,7 @@ Agent 的价值只出现在"需要多步检索、需要判断够不够"的地方
 
 ### 3.5 文件上传：只抽文本，不另起一条链路
 
-上传的文件先落本地磁盘（`FILE_STORAGE_DIR`，默认 `backend/data/files`），与一条 `items` 记录绑定；
+上传的文件先落本地磁盘（`FILE_STORAGE_DIR`，默认 `personal-memory-backend/data/files`），与一条 `items` 记录绑定；
 **正文由 worker 异步抽取**，文本写进 `body_md`，然后走和纯文本完全相同的
 分析 → 切片 → 向量 → 关联流水线。于是"记一句话"和"传一份 PDF"在数据库里是同一种东西，
 检索、问答、总结都不需要为文件单独写分支。
@@ -180,7 +180,7 @@ PostgreSQL 里，表 owner 和超级用户默认**绕过** RLS；超级用户连
 ## 5. 怎么验证它真的在工作
 
 ```bash
-cd backend
+cd personal-memory-backend
 
 # 单元测试（不需要数据库、不需要模型密钥）
 ../.venv/bin/python -m pytest tests/unit -q

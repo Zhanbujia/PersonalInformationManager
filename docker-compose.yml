@@ -21,7 +21,7 @@ services:
   # 一次性迁移任务：先建表，再让 api / worker 启动
   migrate:
     build:
-      context: ./backend
+      context: ./personal-memory-backend
       dockerfile: ../deploy/Dockerfile.backend
     container_name: pim-migrate
     command: ["alembic", "upgrade", "head"]
@@ -36,7 +36,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ./personal-memory-backend
       dockerfile: ../deploy/Dockerfile.backend
     container_name: pim-api
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
@@ -62,7 +62,7 @@ services:
 
   worker-ingest:
     build:
-      context: ./backend
+      context: ./personal-memory-backend
       dockerfile: ../deploy/Dockerfile.backend
     command: ["python", "-m", "workers.ingest_worker"]
     env_file: [.env]
@@ -76,7 +76,7 @@ services:
 
   worker-digest:
     build:
-      context: ./backend
+      context: ./personal-memory-backend
       dockerfile: ../deploy/Dockerfile.backend
     command: ["python", "-m", "workers.digest_worker"]
     env_file: [.env]
@@ -90,7 +90,7 @@ services:
 
   web:
     build:
-      context: ./frontend
+      context: ./personal-memory-frontend
       dockerfile: ../deploy/Dockerfile.frontend
     container_name: pim-web
     depends_on:
