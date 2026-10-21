@@ -153,6 +153,7 @@ class ItemOut(ApiModel):
     file_size: int | None = None
     file_ext: str | None = None
     parse_error: str | None = None
+    collection_id: UUID | None = None
     analysis: AnalysisOut | None = None
     links: list[ItemLinkOut] = Field(default_factory=list)
 

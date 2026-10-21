@@ -34,6 +34,7 @@ async def create_item(
     file_size: int | None = None,
     file_ext: str | None = None,
     storage_key: str | None = None,
+    collection_id: str | None = None,
 ) -> tuple[dict | None, dict | None]:
     """插入记录。返回 (新记录, 重复的已有记录)——两者必有其一。
 
@@ -48,8 +49,9 @@ async def create_item(
         """
         insert into items (user_id, kind, raw_input, body_md, content_hash,
                            search_text, source_channel, source_url, title,
-                           file_name, mime_type, file_size, file_ext, storage_key)
-        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                           file_name, mime_type, file_size, file_ext, storage_key,
+                           collection_id)
+        values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         on conflict (user_id, content_hash) do nothing
         returning id, analysis_status, captured_at
         """,
@@ -68,6 +70,7 @@ async def create_item(
             file_size,
             file_ext,
             storage_key,
+            collection_id,
         ),
     )
     row = await cur.fetchone()
@@ -89,7 +92,7 @@ async def get_item(conn: AsyncConnection, item_id: UUID, *, with_analysis: bool 
         """
         select id, kind, title, body_md, raw_input, source_channel, source_url, tags,
                captured_at, updated_at, analysis_status, analysis_version, user_pinned,
-               file_name, mime_type, file_size, file_ext, parse_error
+               file_name, mime_type, file_size, file_ext, parse_error, collection_id
         from items
         where id = %s and deleted_at is null
         """,
@@ -106,7 +109,7 @@ async def get_item(conn: AsyncConnection, item_id: UUID, *, with_analysis: bool 
 _ITEM_LIST_COLUMNS = """
     id, kind, title, body_md, raw_input, source_channel, source_url, tags,
     captured_at, updated_at, analysis_status, analysis_version, user_pinned,
-    file_name, mime_type, file_size, file_ext, parse_error
+    file_name, mime_type, file_size, file_ext, parse_error, collection_id
 """
 
 

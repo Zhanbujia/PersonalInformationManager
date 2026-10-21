@@ -11,6 +11,7 @@ onMounted(() => auth.bootstrap())
 
 const nav = [
   { name: 'capture', label: '记一笔', hint: '想到什么先丢进来' },
+  { name: 'library', label: '资料库', hint: '文件与资料归档' },
   { name: 'inbox', label: '收件箱', hint: '所有记录与分类' },
   { name: 'ask', label: '问一句', hint: '基于你自己的记录回答' },
   { name: 'todos', label: '待办', hint: '整理出来的要做的事' },

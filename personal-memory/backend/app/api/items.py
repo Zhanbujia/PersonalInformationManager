@@ -57,6 +57,7 @@ def _to_item_out(item: dict) -> dict:
         "fileSize": item.get("file_size"),
         "fileExt": item.get("file_ext"),
         "parseError": item.get("parse_error"),
+        "collectionId": item.get("collection_id"),
         "analysis": (
             {
                 "summary": analysis["summary"],
@@ -126,6 +127,7 @@ def _allowed_hint() -> str:
 async def upload_item(
     file: UploadFile = File(...),
     title: str | None = Form(default=None),
+    collection_id: str | None = Form(default=None, alias="collectionId"),
     auth: AuthUser = Depends(current_user),
     db: Database = Depends(get_db),
 ) -> dict:
@@ -158,6 +160,16 @@ async def upload_item(
 
     try:
         async with db.tx(auth.id) as conn:
+            cid: str | None = None
+            if collection_id:
+                try:
+                    cid = str(UUID(collection_id))
+                except ValueError as exc:
+                    raise InvalidInput("collectionId 格式不正确") from exc
+                cur = await conn.execute("select id from collections where id = %s", (cid,))
+                if not await cur.fetchone():
+                    raise InvalidInput("文件夹不存在")
+
             created, duplicate = await records_repo.create_item(
                 conn,
                 user_id=auth.id,
@@ -174,6 +186,7 @@ async def upload_item(
                 file_size=size,
                 file_ext=ext,
                 storage_key=key,
+                collection_id=cid,
             )
             if duplicate is not None:
                 raise DuplicateContent(

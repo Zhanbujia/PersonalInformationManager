@@ -3,6 +3,7 @@
 把散落各处的想法、资料、待办记到一处，让它们自己长出线索。
 
 - **记**：一句话、一段摘录、一个链接，直接丢进来，不等分析、不填表单。
+- **归档**：上传 PDF / Word / Excel / PPT / 文本，按文件夹归档；可预览、搜索、下载。
 - **整理**：自动分类、打标签、抽重点、切片段、建关联，全程后台完成。
 - **找**：关键词 + 语义混合检索，搜"我上次说的那个召回"也能找到。
 - **问**：基于你自己的记录回答，每条结论后面挂着能点开的原文。
@@ -93,7 +94,7 @@ cd frontend && npm install && npm run dev
 ├── frontend/src/
 │   ├── api/{client,sse}.ts       # fetch 封装 + SSE 流式解析
 │   ├── stores/                   # Pinia：auth / items / ask / todos
-│   ├── views/                    # 记一笔 / 收件箱 / 问一句 / 待办 / 回顾
+│   ├── views/                    # 记一笔 / 资料库 / 收件箱 / 问一句 / 待办 / 回顾
 │   └── components/               # ItemCard / CitationBadge / MarkdownText
 ├── deploy/                       # Dockerfile / init SQL
 ├── designs/                      # 架构设计文档（为什么这么设计）

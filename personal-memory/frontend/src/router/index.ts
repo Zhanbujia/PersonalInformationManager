@@ -16,6 +16,12 @@ const routes = [
     meta: { title: '记一笔' },
   },
   {
+    path: '/library',
+    name: 'library',
+    component: () => import('@/views/Library.vue'),
+    meta: { title: '资料库' },
+  },
+  {
     path: '/inbox',
     name: 'inbox',
     component: () => import('@/views/Inbox.vue'),

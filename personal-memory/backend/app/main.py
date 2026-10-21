@@ -22,7 +22,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import ask, auth, digests, items, search, stats, todos
+from app.api import ask, auth, digests, items, library, search, stats, todos
 from app.config import settings
 from app.errors import AppError
 from app.infra.db import Database, fetch_one
@@ -140,6 +140,7 @@ def create_app() -> FastAPI:
     prefix = settings.api_prefix
     app.include_router(auth.router, prefix=prefix)
     app.include_router(items.router, prefix=prefix)
+    app.include_router(library.router, prefix=prefix)
     app.include_router(search.router, prefix=prefix)
     app.include_router(ask.router, prefix=prefix)
     app.include_router(todos.router, prefix=prefix)

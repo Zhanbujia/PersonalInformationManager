@@ -49,8 +49,41 @@ export interface Item {
   fileSize?: number | null
   fileExt?: string | null
   parseError?: string | null
+  collectionId?: string | null
   analysis?: Analysis | null
   links: ItemLink[]
+}
+
+/** 资料库：一级文件夹 */
+export interface Collection {
+  id: string
+  name: string
+  fileCount: number
+  createdAt: string
+}
+
+/** 资料库列表里的文件（轻量投影，正文只有 excerpt；全文走 /items/{id}） */
+export interface LibraryFile {
+  id: string
+  title?: string | null
+  fileName?: string | null
+  mimeType?: string | null
+  fileSize?: number | null
+  fileExt?: string | null
+  parseError?: string | null
+  analysisStatus: Item['analysisStatus']
+  analysisVersion: number
+  collectionId?: string | null
+  capturedAt: string
+  updatedAt: string
+  excerpt: string
+}
+
+export interface LibraryPage {
+  items: LibraryFile[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface Paged<T> {

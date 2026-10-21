@@ -85,6 +85,26 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   return handleResponse<T>(res)
 }
 
+/** 带鉴权下载：window.open 不会带 Authorization 头，所以 fetch 成 blob 再触发下载。 */
+export async function downloadFile(path: string, filename: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, { headers: { ...authHeaders() } })
+  if (res.status === 401) {
+    setToken(null)
+    onUnauthorized?.()
+    throw new ApiError(401, 'unauthenticated', '登录已过期，请重新登录')
+  }
+  if (!res.ok) throw new ApiError(res.status, 'download_failed', `下载失败（${res.status}）`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename || 'download'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 function safeJson(text: string): any {
   try {
     return JSON.parse(text)
