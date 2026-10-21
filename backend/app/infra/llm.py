@@ -37,6 +37,7 @@ def _chat(model: str, temperature: float, s: Settings):
             "temperature": temperature,
             "timeout": s.llm_timeout,
             "max_retries": s.llm_max_retries,
+            "max_tokens": s.llm_max_tokens,
         }
         if s.llm_base_url:
             kwargs["base_url"] = s.llm_base_url
@@ -54,6 +55,7 @@ def _chat(model: str, temperature: float, s: Settings):
             temperature=temperature,
             timeout=s.llm_timeout,
             max_retries=s.llm_max_retries,
+            max_tokens=s.llm_max_tokens,
             base_url=s.llm_base_url,
             api_key=s.llm_api_key or "not-needed",
         )

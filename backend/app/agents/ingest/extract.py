@@ -17,9 +17,24 @@ from app.agents.ingest.prompt import (
     ingest_user_message,
 )
 from app.agents.ingest.schema import ItemAnalysis, SpanLocated
+from app.config import settings
 from app.infra.tokens import count_tokens
 
 logger = logging.getLogger(__name__)
+
+# json_mode（思考模型用）下，API 只保证"输出是合法 JSON 对象"，
+# 不会强制字段名/类型，所以必须把结构写进提示词。function_calling 模式不需要它。
+ITEM_SCHEMA_HINT = """最终必须**只输出一个 JSON 对象**，不要任何解释性文字，不要用 ``` 代码块包裹。
+严格按以下字段输出：
+{
+  "kind": "note",            // note / idea / link / file / todo 之一
+  "title": "不超过20字的标题",
+  "summary": "不超过120字的一句话摘要，不写任何数字",
+  "tags": ["3到6个标签，每个2到6字"],
+  "key_points": [{"quote": "原文中逐字连续的片段"}],   // 最多5条，没有则 []
+  "todos": [{"quote": "原文中表达要做某事的连续片段"}], // 最多5条，没有则 []
+  "confidence": 0.0          // 0 到 1 之间的小数
+}"""
 
 
 class SpanMismatch(Exception):
@@ -100,25 +115,31 @@ def check_no_digits(text: str) -> None:
         raise SchemaViolation("摘要中出现了数字，必须去掉（数量由程序统计）")
 
 
+def _bind_structured(llm, schema, method: str):
+    """按给定方法绑定结构化输出；方法名不被当前 langchain 版本支持时退回 function_calling。"""
+    try:
+        return llm.with_structured_output(schema, method=method)
+    except TypeError:
+        return llm.with_structured_output(schema, method="function_calling")
+
+
 class Extractor:
     def __init__(self, llm) -> None:
         self._llm = llm
-        try:
-            # function_calling 兼容性最好：OpenAI / DeepSeek / Moonshot 等
-            # OpenAI 兼容网关都支持工具调用；DeepSeek 不支持 json_schema 这种
-            # response_format，会直接 400。
-            self._structured = llm.with_structured_output(ItemAnalysis, method="function_calling")
-        except TypeError:
-            self._structured = llm.with_structured_output(ItemAnalysis, method="function_calling")
+        method = settings.llm_structured_method
+        self._method = method
+        self._structured = _bind_structured(llm, ItemAnalysis, method)
+        # json_mode 下字段结构由提示词约定（API 不强制），须在系统指令里给形状
+        self._system = (INGEST_SYSTEM + "\n\n" + ITEM_SCHEMA_HINT) if method == "json_mode" else INGEST_SYSTEM
 
     async def analyze(self, text: str) -> tuple[ItemAnalysis, int, int]:
         """返回 (分析结果, 输入 token, 输出 token)。"""
         messages = [
-            ("system", INGEST_SYSTEM),
+            ("system", self._system),
             ("user", ingest_user_message(text)),
         ]
         result: ItemAnalysis = await self._structured.ainvoke(messages)
-        tokens_in = count_tokens(INGEST_SYSTEM) + count_tokens(text)
+        tokens_in = count_tokens(self._system) + count_tokens(text)
         tokens_out = count_tokens(result.model_dump_json())
         return result, tokens_in, tokens_out
 
@@ -140,7 +161,7 @@ class Extractor:
                 else:
                     assert last_error is not None
                     messages = [
-                        ("system", INGEST_SYSTEM),
+                        ("system", self._system),
                         ("user", ingest_user_message(text)),
                         ("user", INGEST_RETRY_SUFFIX.format(error=str(last_error))),
                     ]

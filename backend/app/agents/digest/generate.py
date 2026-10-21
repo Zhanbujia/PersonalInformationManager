@@ -46,6 +46,16 @@ DIGEST_SYSTEM = """你是一个中文个人记录总结助手。用户会给你�
 
 输出必须符合给定的 JSON 结构：`body_markdown` 是正文，`action_items` 是建议列表。"""
 
+# json_mode（思考模型用）下，API 只保证"输出是合法 JSON 对象"，
+# 不会强制 action_items 子字段，所以把子结构也写进提示词。
+DIGEST_SCHEMA_HINT = """最终必须**只输出一个 JSON 对象**，不要任何解释性文字，不要用 ``` 代码块包裹。
+字段说明：
+- body_markdown: 字符串，总结正文（markdown）。
+- action_items: 数组，每项是一个对象：
+  {"text": "建议做的一件具体事，一句话",
+   "reason": "为什么建议做，必须引用给出的记录内容",
+   "evidence_item_ids": ["支撑该建议的记录 id，只能从给出的候选 id 里选"]}"""
+
 
 class ActionDraft(BaseModel):
     text: str = Field(description="建议做的一件具体事，一句话")
@@ -149,9 +159,12 @@ async def generate_digest(
         f"请写一份 {period_start} 至 {period_end} 的回顾。"
     )
 
+    system = DIGEST_SYSTEM
+    if settings.llm_structured_method == "json_mode":
+        system = DIGEST_SYSTEM + "\n\n" + DIGEST_SCHEMA_HINT
     structured = _bind_structured(ctx.strong_llm)
     draft: DigestDraft = await structured.ainvoke(
-        [("system", DIGEST_SYSTEM), ("user", prompt)]
+        [("system", system), ("user", prompt)]
     )
 
     # 校验 + 渲染。渲染失败说明模型写了裸数字，直接抛错由上层重试/报错，
@@ -205,8 +218,9 @@ async def generate_digest(
 
 
 def _bind_structured(llm):
+    method = settings.llm_structured_method
     try:
-        return llm.with_structured_output(DigestDraft, method="function_calling")
+        return llm.with_structured_output(DigestDraft, method=method)
     except TypeError:
         return llm.with_structured_output(DigestDraft, method="function_calling")
 

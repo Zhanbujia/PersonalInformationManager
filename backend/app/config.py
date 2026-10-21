@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_timeout: float = 30.0
     llm_max_retries: int = 1
+    # 单条生成的最大 token 数（推理+最终答案都算在内）。
+    # 思考模型（deepseek-v4 等）会先推理，若此处太小答案会被截断，故默认给足。
+    llm_max_tokens: int = 4096
+    # 结构化抽取（入库分析/阶段总结）用的方法。
+    # - function_calling：OpenAI/DeepSeek 非思考模型都支持，由 API 强制字段结构；
+    # - json_mode：思考模型（deepseek-v4-flash 等）"思考模式"会拒绝强制 tool_choice，
+    #   只能用 response_format=json_object，字段结构改由提示词约定（见各 agent 的 schema hint）。
+    # 切换模型时按兼容性填，不写则默认 function_calling。
+    llm_structured_method: str = "function_calling"
 
     fast_model: str = "gpt-4o-mini"
     strong_model: str = "gpt-4o"
